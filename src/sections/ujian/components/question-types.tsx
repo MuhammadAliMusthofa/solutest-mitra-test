@@ -4,15 +4,11 @@ import type { AnswerValue, ExamQuestion } from 'src/models/exam';
 
 import { useMemo, useCallback } from 'react';
 
-import { Input } from 'src/components/ui/input';
-import { Textarea } from 'src/components/ui/textarea';
-
 import { cn } from 'src/lib/utils';
 
 import { useExamAnswerStore } from 'src/state/exam-store';
 
 import { Iconify } from 'src/components/iconify/iconify';
-import { SelectField } from 'src/components/form/select-field';
 import { HtmlContent } from 'src/components/data-display/html-content';
 
 import { isFilled } from '../helpers/exam';
@@ -155,131 +151,93 @@ export function TrueFalse({ q, index }: { q: ExamQuestion; index: number }) {
   );
 }
 
-/** 4 · Menjodohkan — [[pernyataanId, jawabanId | null], ...] */
-export function Matching({ q, index }: { q: ExamQuestion; index: number }) {
+/** 4 · Benar/Salah Kompleks (tabel) — [[pernyataanId, 1 (Benar) | 0 (Salah) | null], ...] */
+export function TrueFalseComplex({ q, index }: { q: ExamQuestion; index: number }) {
   const { answer, set } = useAnswer(q, index);
-  const statements = useMemo(
-    () => q.options.filter((o) => o.type === 'pernyataan').sort((a, b) => a.order - b.order),
-    [q.options]
-  );
-  // urutan jawaban diacak deterministik per soal agar pasangan tidak sejajar
-  const answers = useMemo(
-    () =>
-      q.options
-        .filter((o) => o.type === 'jawaban')
-        .map((o) => ({ o, k: (o.id * 2654435761) % 1000 }))
-        .sort((a, b) => a.k - b.k)
-        .map(({ o }) => o),
-    [q.options]
-  );
-  const pairs = answer as [number, number | null][];
-  const pairOf = (sid: number) => pairs.find((p) => Number(p[0]) === sid)?.[1] ?? null;
+  const statements = useMemo(() => [...q.options].sort((a, b) => a.order - b.order), [q.options]);
+  const rows = answer as [number, number | null][];
+  const valueOf = (sid: number) => {
+    const v = rows.find((r) => Number(r[0]) === sid)?.[1];
+    return v === null || v === undefined ? null : Number(v);
+  };
 
-  const choose = (sid: number, aid: number | null) => {
-    const next = statements.map((s) => {
-      if (s.id === sid) return [s.id, aid] as [number, number | null];
-      const current = pairOf(s.id);
-      // satu jawaban hanya boleh dipakai sekali
-      return [s.id, current !== null && current === aid ? null : current] as [
-        number,
-        number | null,
-      ];
-    });
+  const choose = (sid: number, value: 0 | 1) => {
+    const next = statements.map(
+      (s) => [s.id, s.id === sid ? value : valueOf(s.id)] as [number, number | null]
+    );
     set(
       next,
-      next.every(([, a]) => a !== null)
+      next.every(([, v]) => v !== null)
     );
   };
 
   return (
     <div className="space-y-3">
       <p className="text-sm text-muted-foreground">
-        Pasangkan setiap pernyataan dengan jawaban yang tepat.
+        Tentukan Benar atau Salah untuk setiap pernyataan.
       </p>
-      {statements.map((s, i) => (
-        <div
-          key={s.id}
-          className="grid items-center gap-2 rounded-xl p-3 ring-1 ring-border md:grid-cols-[1fr_auto_minmax(200px,1fr)]"
-        >
-          <div className="flex items-start gap-2">
-            <span className="grid size-7 shrink-0 place-items-center rounded-md bg-muted text-xs font-semibold">
-              {i + 1}
-            </span>
-            <HtmlContent html={s.option_text} className="pt-0.5" />
-          </div>
-          <Iconify
-            icon="solar:arrow-right-linear"
-            size={18}
-            className="hidden text-muted-foreground md:block"
-          />
-          <SelectField
-            aria-label={`Jawaban untuk pernyataan ${i + 1}`}
-            value={pairOf(s.id) === null ? '' : String(pairOf(s.id))}
-            onChange={(v) => choose(s.id, v ? Number(v) : null)}
-            allLabel="— Pilih jawaban —"
-            options={answers.map((a) => ({
-              value: String(a.id),
-              label: a.option_text.replace(/<[^>]+>/g, '').trim(),
-            }))}
-            className="sm:w-full"
-          />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/** 5 · Isian singkat — ["teks kolom 1", ...] */
-export function ShortAnswer({ q, index }: { q: ExamQuestion; index: number }) {
-  const { answer, set } = useAnswer(q, index);
-  const values = answer as string[];
-  const columns = Math.max(1, q.column_answer);
-  return (
-    <div className="space-y-3">
-      {Array.from({ length: columns }, (_, i) => (
-        <label key={i} className="block space-y-1.5">
-          <span className="text-sm font-medium">
-            {columns > 1 ? `Jawaban ${i + 1}` : 'Jawaban'}
-          </span>
-          <Input
-            value={values[i] ?? ''}
-            onChange={(e) => {
-              const next = Array.from({ length: columns }, (__, k) =>
-                k === i ? e.target.value : (values[k] ?? '')
+      <div className="overflow-x-auto rounded-xl ring-1 ring-border">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/60 text-left text-xs font-semibold text-muted-foreground uppercase">
+            <tr>
+              <th scope="col" className="w-10 px-3 py-2.5">
+                No
+              </th>
+              <th scope="col" className="px-3 py-2.5">
+                Pernyataan
+              </th>
+              <th scope="col" className="w-20 px-3 py-2.5 text-center">
+                Benar
+              </th>
+              <th scope="col" className="w-20 px-3 py-2.5 text-center">
+                Salah
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {statements.map((s, i) => {
+              const value = valueOf(s.id);
+              return (
+                <tr key={s.id} className="border-t border-border">
+                  <td className="px-3 py-3 align-top font-semibold">{i + 1}</td>
+                  <td className="px-3 py-3">
+                    <HtmlContent html={s.option_text} />
+                  </td>
+                  {([1, 0] as const).map((v) => {
+                    const selected = value === v;
+                    return (
+                      <td key={v} className="px-3 py-3 text-center">
+                        <button
+                          type="button"
+                          role="radio"
+                          aria-checked={selected}
+                          aria-label={`Pernyataan ${i + 1}: ${v === 1 ? 'Benar' : 'Salah'}`}
+                          onClick={() => choose(s.id, v)}
+                          className={cn(
+                            'inline-grid size-9 place-items-center rounded-full ring-1 ring-border transition-colors hover:bg-primary/4 hover:ring-primary/40 focus-visible:ring-3 focus-visible:ring-primary/30 focus-visible:outline-none',
+                            selected &&
+                              'bg-primary text-primary-foreground ring-primary hover:bg-primary'
+                          )}
+                        >
+                          {selected && (
+                            <Iconify
+                              icon={
+                                v === 1 ? 'solar:check-read-linear' : 'solar:close-circle-linear'
+                              }
+                              size={18}
+                            />
+                          )}
+                        </button>
+                      </td>
+                    );
+                  })}
+                </tr>
               );
-              set(
-                next,
-                next.every((v) => v.trim() !== '')
-              );
-            }}
-            placeholder="Ketik jawaban singkat"
-            autoComplete="off"
-            className="h-12"
-          />
-        </label>
-      ))}
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
-  );
-}
-
-/** 6 · Esai — ["teks"] */
-export function Essay({ q, index }: { q: ExamQuestion; index: number }) {
-  const { answer, set } = useAnswer(q, index);
-  const value = String((answer as string[])[0] ?? '');
-  return (
-    <label className="block space-y-1.5">
-      <span className="text-sm font-medium">Jawaban esai</span>
-      <Textarea
-        value={value}
-        onChange={(e) => set([e.target.value])}
-        rows={10}
-        placeholder="Tulis jawabanmu di sini…"
-        className="min-h-48"
-      />
-      <span className="block text-right text-xs text-muted-foreground">
-        {value.trim() ? value.trim().split(/\s+/).length : 0} kata
-      </span>
-    </label>
   );
 }
 
@@ -292,11 +250,7 @@ export function QuestionAnswerArea({ q, index }: { q: ExamQuestion; index: numbe
     case 3:
       return <TrueFalse q={q} index={index} />;
     case 4:
-      return <Matching q={q} index={index} />;
-    case 5:
-      return <ShortAnswer q={q} index={index} />;
-    case 6:
-      return <Essay q={q} index={index} />;
+      return <TrueFalseComplex q={q} index={index} />;
     default:
       return <p className="text-sm text-muted-foreground">Tipe soal belum didukung.</p>;
   }

@@ -5,9 +5,10 @@ import type { Question } from 'src/models/question';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 
 import { Button } from 'src/components/ui/button';
+import { Checkbox } from 'src/components/ui/checkbox';
 import { Skeleton } from 'src/components/ui/skeleton';
 
 import { usePanel } from 'src/hooks/use-panel';
@@ -19,29 +20,52 @@ import { questionTypeName } from 'src/models/question';
 import { Iconify } from 'src/components/iconify/iconify';
 import { ErrorState } from 'src/components/feedback/error-state';
 import { EmptyState } from 'src/components/feedback/empty-state';
-import { StatusPill } from 'src/components/data-display/status-pill';
 import { PageHeader } from 'src/components/data-display/page-header';
 import { ConfirmDialog } from 'src/components/feedback/confirm-dialog';
 import { SectionCard } from 'src/components/data-display/section-card';
 
 import { QuestionCard } from '../components/question-card';
-import { GenerateDialog } from '../components/generate-dialog';
 import { PackageFormDialog } from '../components/package-form-dialog';
 import { usePackageDetail, usePaketMutations } from '../hooks/use-paket';
 
 export function PaketDetailContainer() {
+  const router = useRouter();
   const { id } = useParams<{ id: string }>();
   const { paths } = usePanel();
   const query = usePackageDetail(id);
-  const { removeQuestion } = usePaketMutations();
-  const [genOpen, setGenOpen] = useState(false);
+  const { removeQuestion, removeQuestions, duplicatePackage } = usePaketMutations();
   const [editOpen, setEditOpen] = useState(false);
   const [toDelete, setToDelete] = useState<{ q: Question; no: number } | null>(null);
+  const [picked, setPicked] = useState<Set<number>>(() => new Set());
+  const [confirmBulk, setConfirmBulk] = useState(false);
   const p = query.data;
+
+  // hanya soal yang masih ada di paket yang dihitung terpilih
+  const questionIds = (p?.questions ?? []).map((q) => q.id);
+  const selected = questionIds.filter((qid) => picked.has(qid));
+  const allSelected = questionIds.length > 0 && selected.length === questionIds.length;
+
+  const toggle = (qid: number, on: boolean) =>
+    setPicked((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(qid);
+      else next.delete(qid);
+      return next;
+    });
+
+  const duplicate = () =>
+    p &&
+    duplicatePackage.mutate(p.id, { onSuccess: (pkg) => router.push(paths.paketDetail(pkg.id)) });
 
   const typeCounts = Object.entries(
     (p?.questions ?? []).reduce<Record<string, number>>((acc, q) => {
       const name = questionTypeName(q.type_question_id);
+      return { ...acc, [name]: (acc[name] ?? 0) + 1 };
+    }, {})
+  );
+  const competencyCounts = Object.entries(
+    (p?.questions ?? []).reduce<Record<string, number>>((acc, q) => {
+      const name = q.competency_name ?? 'Tanpa kompetensi';
       return { ...acc, [name]: (acc[name] ?? 0) + 1 };
     }, {})
   );
@@ -63,9 +87,12 @@ export function PaketDetailContainer() {
                 <Iconify icon="solar:pen-linear" size={18} />
                 Ubah info
               </Button>
-              <Button variant="outline" onClick={() => setGenOpen(true)}>
-                <Iconify icon="solar:magic-stick-3-linear" size={18} />
-                Generate dari bank soal
+              <Button variant="outline" onClick={duplicate} disabled={duplicatePackage.isPending}>
+                <Iconify
+                  icon={duplicatePackage.isPending ? 'svg-spinners:180-ring' : 'solar:copy-linear'}
+                  size={18}
+                />
+                Salin paket
               </Button>
               <Button asChild>
                 <Link href={paths.questionCreate(p.id)}>
@@ -119,14 +146,19 @@ export function PaketDetailContainer() {
                 </div>
               ))}
             </dl>
-            {p.chapters.length > 0 && (
+            {competencyCounts.length > 0 && (
               <div className="mt-4">
-                <p className="mb-2 text-xs font-semibold text-muted-foreground uppercase">Bab</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {p.chapters.map((c) => (
-                    <StatusPill key={c.id}>{c.name}</StatusPill>
+                <p className="mb-2 text-xs font-semibold text-muted-foreground uppercase">
+                  Sebaran kompetensi
+                </p>
+                <ul className="space-y-1 text-sm">
+                  {competencyCounts.map(([name, n]) => (
+                    <li key={name} className="flex justify-between gap-3">
+                      <span className="line-clamp-2">{name}</span>
+                      <span className="font-semibold tabular-nums">{n}</span>
+                    </li>
                   ))}
-                </div>
+                </ul>
               </div>
             )}
             {typeCounts.length > 0 && (
@@ -150,33 +182,59 @@ export function PaketDetailContainer() {
             {p.questions.length === 0 ? (
               <EmptyState
                 title="Paket masih kosong"
-                description="Tambahkan soal manual atau generate dari bank soal."
+                description="Tambahkan soal pertama: PG, PG Kompleks, Benar/Salah, atau Benar/Salah Kompleks."
                 icon="solar:document-add-linear"
                 action={
-                  <Button onClick={() => setGenOpen(true)}>
-                    <Iconify icon="solar:magic-stick-3-linear" size={18} />
-                    Generate dari bank soal
+                  <Button asChild>
+                    <Link href={paths.questionCreate(p.id)}>
+                      <Iconify icon="solar:add-circle-linear" size={18} />
+                      Tambah soal
+                    </Link>
                   </Button>
                 }
               />
             ) : (
-              <div className="space-y-4">
-                {p.questions.map((q, i) => (
-                  <QuestionCard
-                    key={q.id}
-                    q={q}
-                    no={i + 1}
-                    editHref={paths.questionEdit(p.id, q.id)}
-                    onDelete={() => setToDelete({ q, no: i + 1 })}
-                  />
-                ))}
-              </div>
+              <>
+                <div className="sticky top-24 z-10 mb-4 flex flex-wrap items-center gap-3 rounded-xl bg-card px-4 py-2.5 ring-1 ring-border">
+                  <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
+                    <Checkbox
+                      checked={allSelected}
+                      onCheckedChange={(v) => setPicked(v ? new Set(questionIds) : new Set())}
+                      aria-label="Pilih semua soal"
+                    />
+                    {selected.length ? `${selected.length} soal dipilih` : 'Pilih semua'}
+                  </label>
+                  {selected.length > 0 && (
+                    <div className="ml-auto flex gap-2">
+                      <Button variant="ghost" size="sm" onClick={() => setPicked(new Set())}>
+                        Batal pilih
+                      </Button>
+                      <Button variant="destructive" size="sm" onClick={() => setConfirmBulk(true)}>
+                        <Iconify icon="solar:trash-bin-trash-linear" size={16} />
+                        Hapus {selected.length} soal
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-4">
+                  {p.questions.map((q, i) => (
+                    <QuestionCard
+                      key={q.id}
+                      q={q}
+                      no={i + 1}
+                      editHref={paths.questionEdit(p.id, q.id)}
+                      onDelete={() => setToDelete({ q, no: i + 1 })}
+                      selected={picked.has(q.id)}
+                      onSelectedChange={(on) => toggle(q.id, on)}
+                    />
+                  ))}
+                </div>
+              </>
             )}
           </SectionCard>
         </div>
       )}
 
-      {p && <GenerateDialog open={genOpen} onOpenChange={setGenOpen} paket={p} />}
       {p && <PackageFormDialog open={editOpen} onOpenChange={setEditOpen} initial={p} />}
       <ConfirmDialog
         open={Boolean(toDelete)}
@@ -191,6 +249,26 @@ export function PaketDetailContainer() {
           removeQuestion.mutate(
             { paketId: id, questionId: toDelete.q.id },
             { onSuccess: () => setToDelete(null) }
+          )
+        }
+      />
+      <ConfirmDialog
+        open={confirmBulk}
+        onOpenChange={setConfirmBulk}
+        tone="danger"
+        title={`Hapus ${selected.length} soal terpilih?`}
+        description="Soal terpilih dihapus dari paket ini. Tryout yang sudah dikerjakan tidak terpengaruh."
+        confirmLabel={`Hapus ${selected.length} soal`}
+        loading={removeQuestions.isPending}
+        onConfirm={() =>
+          removeQuestions.mutate(
+            { paketId: id, ids: selected },
+            {
+              onSuccess: () => {
+                setConfirmBulk(false);
+                setPicked(new Set());
+              },
+            }
           )
         }
       />

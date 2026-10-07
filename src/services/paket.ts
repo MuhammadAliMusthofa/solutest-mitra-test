@@ -10,10 +10,11 @@ import type {
   QuestionBody,
   PackageDetail,
   PackageOption,
-  ChapterOption,
   SubjectOption,
   CategoryOption,
-  GenerateQuestionsBody,
+  IndicatorOption,
+  CompetencyOption,
+  DeleteQuestionsBody,
 } from 'src/models/question';
 
 import { api } from 'src/core/http';
@@ -22,8 +23,10 @@ export const masterService = {
   classes: () => api.get<ClassOption[]>('/master/classes'),
   subjects: () => api.get<SubjectOption[]>('/master/subjects'),
   categories: () => api.get<CategoryOption[]>('/master/categories'),
-  chapters: (p: { class_id?: number; subject_id?: number }) =>
-    api.get<ChapterOption[]>('/master/chapters', p),
+  competencies: (p: { class_id?: number; subject_id?: number }) =>
+    api.get<CompetencyOption[]>('/master/competencies', p),
+  indicators: (p: { competency_id?: number }) =>
+    api.get<IndicatorOption[]>('/master/indicators', p),
 };
 
 export const paketService = {
@@ -33,6 +36,8 @@ export const paketService = {
   create: (body: PackageBody) => api.post<Package>('/packages', body),
   update: (id: number, body: PackageBody) => api.put<Package>(`/packages/${id}`, body),
   remove: (id: number) => api.delete<unknown>(`/packages/${id}`),
+  /** Salin paket beserta seluruh soalnya → paket baru (kode baru). */
+  duplicate: (id: number) => api.post<Package>(`/packages/${id}/duplicate`),
 
   question: (paketId: number | string, questionId: number | string) =>
     api.get<Question>(`/packages/${paketId}/questions/${questionId}`),
@@ -42,8 +47,8 @@ export const paketService = {
     api.put<Question>(`/packages/${paketId}/questions/${questionId}`, body),
   removeQuestion: (paketId: number | string, questionId: number) =>
     api.delete<unknown>(`/packages/${paketId}/questions/${questionId}`),
-  generate: (paketId: number | string, body: GenerateQuestionsBody) =>
-    api.post<PackageDetail>(`/packages/${paketId}/generate`, body),
+  removeQuestions: (paketId: number | string, body: DeleteQuestionsBody) =>
+    api.post<unknown>(`/packages/${paketId}/questions/bulk-delete`, body),
 };
 
 export const scheduleService = {

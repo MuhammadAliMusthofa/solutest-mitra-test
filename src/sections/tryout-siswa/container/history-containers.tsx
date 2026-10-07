@@ -193,65 +193,65 @@ const optionClass = (o: { is_true: boolean; selected: boolean }) =>
     o.selected && !o.is_true && 'bg-destructive/8 ring-destructive/40'
   );
 
+const tfLabel = (v: number | null | undefined) =>
+  v === null || v === undefined ? '—' : Number(v) === 1 ? 'Benar' : 'Salah';
+
 function StudentAnswer({ q }: { q: ExplanationQuestion }) {
   if (q.type_question_id === 4) {
-    const statements = q.options.filter((o) => o.type === 'pernyataan');
-    const answers = q.options.filter((o) => o.type === 'jawaban');
-    const pairs = q.answer as [number, number | null][];
+    const rows = q.answer as [number, number | null][];
     return (
-      <ul className="space-y-2">
-        {statements.map((s, i) => {
-          const chosen = answers.find(
-            (a) => a.id === pairs.find((p) => Number(p[0]) === s.id)?.[1]
-          );
-          const correct = answers[i];
-          const ok = chosen?.id === correct?.id;
-          return (
-            <li
-              key={s.id}
-              className={cn(
-                'grid gap-2 rounded-lg p-3 text-sm ring-1 md:grid-cols-3',
-                ok ? 'ring-success/40' : 'ring-destructive/40'
-              )}
-            >
-              <HtmlContent html={s.option_text} />
-              <span>
-                Jawabanmu:{' '}
-                <HtmlContent
-                  html={chosen?.option_text ?? '<i>kosong</i>'}
-                  as="span"
-                  className="font-semibold"
-                />
-              </span>
-              <span>
-                Kunci:{' '}
-                <HtmlContent
-                  html={correct?.option_text}
-                  as="span"
-                  className="font-semibold text-success"
-                />
-              </span>
-            </li>
-          );
-        })}
-      </ul>
-    );
-  }
-  if (q.type_question_id === 5 || q.type_question_id === 6) {
-    return (
-      <div className="space-y-2 text-sm">
-        <p className="rounded-lg bg-muted/60 px-3 py-2">
-          <span className="font-semibold">Jawabanmu: </span>
-          {(q.answer as string[]).filter(Boolean).join(', ') || <i>kosong</i>}
-        </p>
-        <div className="rounded-lg bg-success/8 px-3 py-2 ring-1 ring-success/30">
-          <span className="font-semibold">
-            {q.type_question_id === 5 ? 'Kunci: ' : 'Jawaban acuan: '}
-          </span>
-          {q.options.map((o) => (
-            <HtmlContent key={o.id} html={o.option_text} as="span" />
-          ))}
-        </div>
+      <div className="overflow-x-auto rounded-lg ring-1 ring-border">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/60 text-left text-xs font-semibold text-muted-foreground uppercase">
+            <tr>
+              <th scope="col" className="px-3 py-2">
+                Pernyataan
+              </th>
+              <th scope="col" className="w-28 px-3 py-2 text-center">
+                Jawabanmu
+              </th>
+              <th scope="col" className="w-24 px-3 py-2 text-center">
+                Kunci
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {[...q.options]
+              .sort((a, b) => a.order - b.order)
+              .map((o) => {
+                const chosen = rows.find((r) => Number(r[0]) === o.id)?.[1];
+                const answered = chosen !== null && chosen !== undefined;
+                const ok = answered && Number(chosen) === (o.is_true ? 1 : 0);
+                return (
+                  <tr key={o.id} className="border-t border-border">
+                    <td className="px-3 py-2">
+                      <HtmlContent html={o.option_text} />
+                    </td>
+                    <td
+                      className={cn(
+                        'px-3 py-2 text-center font-semibold',
+                        answered && (ok ? 'text-success' : 'text-destructive'),
+                        !answered && 'text-muted-foreground'
+                      )}
+                    >
+                      <span className="inline-flex items-center gap-1">
+                        {answered && (
+                          <Iconify
+                            icon={ok ? 'solar:check-circle-linear' : 'solar:close-circle-linear'}
+                            size={16}
+                          />
+                        )}
+                        {tfLabel(chosen)}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 text-center font-semibold text-success">
+                      {o.is_true ? 'Benar' : 'Salah'}
+                    </td>
+                  </tr>
+                );
+              })}
+          </tbody>
+        </table>
       </div>
     );
   }

@@ -2,20 +2,22 @@
 // bersama oleh admin, guru, dan siswa di browser yang sama (mis. jadwal buatan admin langsung bisa
 // dikerjakan siswa). Reset lewat tombol "Reset data simulasi" atau resetDb().
 
-import type { Question } from 'src/models/question';
 import type { TenantBranding } from 'src/models/tenant';
 import type { AnswerPayloadItem } from 'src/models/exam';
 import type { TryoutSchedule } from 'src/models/schedule';
+import type { Question, QuestionType } from 'src/models/question';
 
 import { ROLES } from 'src/config/roles';
 import type { Role } from 'src/config/roles';
 import { DEFAULT_THEME } from 'src/config/theme';
 
 import { SCHOOLS, SCHEDULES, TENANT_NAME } from './data';
-import { MOCK_CHAPTERS, buildBankQuestion } from './seed';
+import { buildBankQuestion, MOCK_COMPETENCIES } from './seed';
 
 export const DB_KEY = 'st_mock_db';
-const VERSION = 1;
+// v2: tipe soal disederhanakan menjadi 4 (PG, PG Kompleks, Benar/Salah, Benar/Salah Kompleks)
+// v3: bab paket diganti kompetensi & indikator per soal
+const VERSION = 3;
 export const MOCK_PASSWORD = 'mitra123';
 
 export interface MockAccount {
@@ -47,7 +49,6 @@ export interface StoredPackage {
   title: string;
   class_id: number;
   subject_id: number;
-  chapter_ids: number[];
   question_ids: number[];
   created_by: string;
   createdAt: string;
@@ -99,15 +100,17 @@ const createInitialDb = (): MockDb => {
     id: number,
     title: string,
     subjectId: number,
-    types: (1 | 2 | 3 | 4 | 5 | 6)[],
+    types: QuestionType[],
     code = packageCode(id),
     createdAt = now
   ): StoredPackage => {
-    const chapters = MOCK_CHAPTERS.filter((c) => c.class_id === 12 && c.subject_id === subjectId);
-    const questionIds = chapters.flatMap((chapter, ci) =>
+    const competencies = MOCK_COMPETENCIES.filter(
+      (c) => c.class_id === 12 && c.subject_id === subjectId
+    );
+    const questionIds = competencies.flatMap((competency, ci) =>
       types.map((type, k) => {
         nextId += 1;
-        questions[nextId] = buildBankQuestion(nextId, chapter, type, ((ci + k) % 5) + 1);
+        questions[nextId] = buildBankQuestion(nextId, competency, type, ((ci + k) % 5) + 1);
         return nextId;
       })
     );
@@ -117,7 +120,6 @@ const createInitialDb = (): MockDb => {
       title,
       class_id: 12,
       subject_id: subjectId,
-      chapter_ids: chapters.map((c) => c.id),
       question_ids: questionIds,
       created_by: 'Admin Dinas Pendidikan',
       createdAt,
@@ -132,7 +134,7 @@ const createInitialDb = (): MockDb => {
       s.package_id,
       s.package_title,
       subjects[i % subjects.length],
-      [1, 2, 3, 1, 5],
+      [1, 2, 3, 1, 4],
       s.package_code,
       `${s.start_date.slice(0, 10)}T00:00:00.000Z`
     )
@@ -141,9 +143,9 @@ const createInitialDb = (): MockDb => {
     7101,
     'Paket TKA Bahasa Indonesia — Semua Tipe Soal',
     5,
-    [1, 2, 3, 4, 5, 6]
+    [1, 2, 3, 4, 1, 4]
   );
-  const upcoming = makePackage(7102, 'Paket TKA Matematika — November', 8, [1, 1, 2, 3, 5]);
+  const upcoming = makePackage(7102, 'Paket TKA Matematika — November', 8, [1, 1, 2, 3, 4]);
   packages.push(live, upcoming);
 
   const schedules: TryoutSchedule[] = [

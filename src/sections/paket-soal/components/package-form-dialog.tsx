@@ -7,7 +7,6 @@ import { useState } from 'react';
 import { Input } from 'src/components/ui/input';
 import { Label } from 'src/components/ui/label';
 import { Button } from 'src/components/ui/button';
-import { Checkbox } from 'src/components/ui/checkbox';
 import {
   Dialog,
   DialogTitle,
@@ -30,17 +29,13 @@ interface Props {
   onSaved?: (pkg: Package) => void;
 }
 
-/** Buat / ubah paket soal: judul, kelas, mapel, bab. */
+/** Buat / ubah paket soal: judul, kelas, mapel. Kompetensi & indikator diisi per soal. */
 export function PackageFormDialog({ open, onOpenChange, initial, onSaved }: Props) {
   const [title, setTitle] = useState('');
   const [classId, setClassId] = useState('');
   const [subjectId, setSubjectId] = useState('');
-  const [chapterIds, setChapterIds] = useState<number[]>([]);
   const [submitted, setSubmitted] = useState(false);
-  const master = useMasterData({
-    class_id: Number(classId) || undefined,
-    subject_id: Number(subjectId) || undefined,
-  });
+  const master = useMasterData();
   const { savePackage } = usePaketMutations();
 
   const [prevOpen, setPrevOpen] = useState(open);
@@ -50,7 +45,6 @@ export function PackageFormDialog({ open, onOpenChange, initial, onSaved }: Prop
       setTitle(initial?.title ?? '');
       setClassId(initial ? String(initial.class_id) : '');
       setSubjectId(initial ? String(initial.subject_id) : '');
-      setChapterIds(initial?.chapter_ids ?? []);
       setSubmitted(false);
     }
   }
@@ -72,7 +66,6 @@ export function PackageFormDialog({ open, onOpenChange, initial, onSaved }: Prop
           title,
           class_id: Number(classId),
           subject_id: Number(subjectId),
-          chapter_ids: chapterIds,
         },
       },
       {
@@ -111,10 +104,7 @@ export function PackageFormDialog({ open, onOpenChange, initial, onSaved }: Prop
               <SelectField
                 id="paket-class"
                 value={classId}
-                onChange={(v) => {
-                  setClassId(v);
-                  setChapterIds([]);
-                }}
+                onChange={setClassId}
                 options={(master.classes.data ?? []).map((c) => ({
                   value: String(c.id),
                   label: `Kelas ${c.name}`,
@@ -129,10 +119,7 @@ export function PackageFormDialog({ open, onOpenChange, initial, onSaved }: Prop
               <SelectField
                 id="paket-subject"
                 value={subjectId}
-                onChange={(v) => {
-                  setSubjectId(v);
-                  setChapterIds([]);
-                }}
+                onChange={setSubjectId}
                 options={(master.subjects.data ?? []).map((s) => ({
                   value: String(s.id),
                   label: s.name,
@@ -146,33 +133,23 @@ export function PackageFormDialog({ open, onOpenChange, initial, onSaved }: Prop
           {submitted && (errors.class || errors.subject) && (
             <p className="text-xs text-destructive">{errors.class || errors.subject}</p>
           )}
-          <fieldset className="space-y-2">
-            <legend className="text-sm font-medium">Bab (opsional)</legend>
-            {!classId || !subjectId ? (
-              <p className="text-xs text-muted-foreground">
-                Pilih kelas & mapel untuk menampilkan bab.
-              </p>
-            ) : (
-              <div className="grid gap-2 sm:grid-cols-2">
-                {(master.chapters.data ?? []).map((c) => (
-                  <label
-                    key={c.id}
-                    className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm ring-1 ring-border has-[:checked]:bg-primary/6 has-[:checked]:ring-primary/40"
-                  >
-                    <Checkbox
-                      checked={chapterIds.includes(c.id)}
-                      onCheckedChange={(v) =>
-                        setChapterIds((prev) =>
-                          v ? [...prev, c.id] : prev.filter((x) => x !== c.id)
-                        )
-                      }
-                    />
-                    {c.order}. {c.name}
-                  </label>
-                ))}
-              </div>
-            )}
-          </fieldset>
+          {initial &&
+          initial.question_count > 0 &&
+          (classId !== String(initial.class_id) || subjectId !== String(initial.subject_id)) ? (
+            <p
+              role="alert"
+              className="flex items-start gap-2 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning"
+            >
+              <Iconify icon="solar:danger-triangle-linear" size={16} className="mt-px shrink-0" />
+              Kelas/mapel berubah: kompetensi & indikator pada {initial.question_count} soal yang
+              ada mungkin tidak lagi sesuai dan perlu diperiksa ulang.
+            </p>
+          ) : (
+            <p className="rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
+              Kompetensi & indikator dipilih per soal saat menambah soal, sesuai kelas & mapel
+              paket.
+            </p>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>

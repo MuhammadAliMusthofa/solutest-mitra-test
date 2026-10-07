@@ -26,7 +26,7 @@ import { getPredicate } from 'src/utils/predicate';
 
 import { withLiveStatus } from './packages';
 import { loadDb, nextId, mutateDb } from '../db';
-import { MOCK_CLASSES, MOCK_CHAPTERS, MOCK_SUBJECTS } from '../seed';
+import { MOCK_CLASSES, MOCK_SUBJECTS } from '../seed';
 import { SCHOOLS, TRYOUTS, helpers, STUDENTS, TENANT_NAME } from '../data';
 import { fail, paginate, parseDate, requireUser, scheduleStatus } from '../utils';
 import { isAnswered, wrongAnswer, scoreQuestion, correctAnswer } from '../scoring';
@@ -67,14 +67,7 @@ const toExamQuestion = (q: Question): ExamQuestion => ({
   question_text: q.question_text,
   text: q.text,
   text_image: q.text_image,
-  column_answer:
-    q.type_question_id === 5 ? Math.max(1, q.options.filter((o) => o.is_true).length) : 1,
-  options: q.options.map(({ id, option_text, order, type }) => ({
-    id,
-    option_text,
-    order,
-    ...(type ? { type } : {}),
-  })),
+  options: q.options.map(({ id, option_text, order }) => ({ id, option_text, order })),
   attachments: q.attachments,
 });
 
@@ -363,7 +356,14 @@ export const explanation = (ctx: MockContext) => {
     questions: questions.map((q): ExplanationQuestion => {
       const answer = (attempt.answers.find((a) => Number(a.id) === q.id)?.answer ??
         []) as ExplanationQuestion['answer'];
-      const chosen = new Set((answer as unknown[]).flat().map(String));
+      // B/S Kompleks: `selected` = siswa menjawab Benar untuk pernyataan tsb.
+      const chosen = new Set(
+        q.type_question_id === 4
+          ? (answer as unknown[])
+              .filter((row) => Array.isArray(row) && Number(row[1]) === 1 && row[1] !== null)
+              .map((row) => String((row as unknown[])[0]))
+          : (answer as unknown[]).map(String)
+      );
       return {
         ...toExamQuestion(q),
         description: q.description,
@@ -371,7 +371,6 @@ export const explanation = (ctx: MockContext) => {
           id: o.id,
           option_text: o.option_text,
           order: o.order,
-          ...(o.type ? { type: o.type } : {}),
           is_true: Boolean(o.is_true),
           selected: chosen.has(String(o.id)),
         })),
@@ -461,7 +460,7 @@ export const performanceReport = (ctx: MockContext): PerformanceReport => {
 
   const groups = new Map<string, Question[]>();
   questions.forEach((q) => {
-    const area = MOCK_CHAPTERS.find((c) => c.id === q.chapter_id)?.name ?? 'Soal buatan lembaga';
+    const area = q.competency_name ?? 'Tanpa kompetensi';
     groups.set(area, [...(groups.get(area) ?? []), q]);
   });
   const breakdown: CompetencyBreakdown[] = Array.from(groups.entries()).map(([area, qs]) => {

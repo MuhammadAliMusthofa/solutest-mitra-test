@@ -7,6 +7,7 @@ import type { Question } from 'src/models/question';
 import Link from 'next/link';
 
 import { Button } from 'src/components/ui/button';
+import { Checkbox } from 'src/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipTrigger } from 'src/components/ui/tooltip';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from 'src/components/ui/collapsible';
 
@@ -23,33 +24,43 @@ const LETTERS = 'ABCDEFGHIJ';
 /** Kunci jawaban ringkas per tipe soal. */
 function AnswerKey({ q }: { q: Question }) {
   if (q.type_question_id === 4) {
-    const statements = q.options.filter((o) => o.type === 'pernyataan');
-    const answers = q.options.filter((o) => o.type === 'jawaban');
     return (
-      <ul className="space-y-1.5">
-        {statements.map((s, i) => (
-          <li key={s.id} className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-sm">
-            <span className="rounded-lg bg-muted px-3 py-1.5">
-              <HtmlContent html={s.option_text} as="span" />
-            </span>
-            <Iconify icon="solar:arrow-right-linear" size={16} className="text-muted-foreground" />
-            <span className="rounded-lg bg-success/8 px-3 py-1.5 ring-1 ring-success/30">
-              <HtmlContent html={answers[i]?.option_text} as="span" />
-            </span>
-          </li>
-        ))}
-      </ul>
-    );
-  }
-  if (q.type_question_id === 5 || q.type_question_id === 6) {
-    return (
-      <div className="rounded-lg bg-success/8 px-3 py-2 text-sm ring-1 ring-success/30">
-        <span className="mr-1 font-semibold">
-          {q.type_question_id === 5 ? 'Kunci:' : 'Rubrik:'}
-        </span>
-        {q.options.map((o) => (
-          <HtmlContent key={o.id} html={o.option_text} as="span" />
-        ))}
+      <div className="overflow-x-auto rounded-lg ring-1 ring-border">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/60 text-left text-xs font-semibold text-muted-foreground uppercase">
+            <tr>
+              <th scope="col" className="w-10 px-3 py-2">
+                No
+              </th>
+              <th scope="col" className="px-3 py-2">
+                Pernyataan
+              </th>
+              <th scope="col" className="w-24 px-3 py-2 text-center">
+                Kunci
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {[...q.options]
+              .sort((a, b) => a.order - b.order)
+              .map((o, i) => (
+                <tr key={o.id} className="border-t border-border">
+                  <td className="px-3 py-2 font-semibold">{i + 1}</td>
+                  <td className="px-3 py-2">
+                    <HtmlContent html={o.option_text} />
+                  </td>
+                  <td className="px-3 py-2 text-center">
+                    <StatusPill
+                      tone={o.is_true ? 'success' : 'danger'}
+                      icon={o.is_true ? 'solar:check-circle-linear' : 'solar:close-circle-linear'}
+                    >
+                      {o.is_true ? 'Benar' : 'Salah'}
+                    </StatusPill>
+                  </td>
+                </tr>
+              ))}
+          </tbody>
+        </table>
       </div>
     );
   }
@@ -84,25 +95,35 @@ export function QuestionCard({
   no,
   editHref,
   onDelete,
+  selected,
+  onSelectedChange,
 }: {
   q: Question;
   no: number;
   editHref: string;
   onDelete: () => void;
+  /** dipilih untuk hapus massal */
+  selected: boolean;
+  onSelectedChange: (selected: boolean) => void;
 }) {
   return (
-    <article className="rounded-xl p-4 ring-1 ring-border md:p-5">
+    <article
+      className={cn(
+        'rounded-xl p-4 ring-1 ring-border transition-colors md:p-5',
+        selected && 'bg-primary/4 ring-2 ring-primary/50'
+      )}
+    >
       <header className="flex flex-wrap items-center gap-2">
+        <Checkbox
+          checked={selected}
+          onCheckedChange={(v) => onSelectedChange(Boolean(v))}
+          aria-label={`Pilih soal ${no}`}
+          className="mr-1"
+        />
         <span className="grid size-8 place-items-center rounded-lg bg-primary/10 text-sm font-semibold text-primary">
           {no}
         </span>
         <StatusPill tone="secondary">{questionTypeName(q.type_question_id)}</StatusPill>
-        <StatusPill
-          tone={q.source === 'manual' ? 'accent' : 'neutral'}
-          icon={q.source === 'manual' ? 'solar:pen-new-round-linear' : 'solar:database-linear'}
-        >
-          {q.source === 'manual' ? 'Buatan mitra' : 'Bank soal'}
-        </StatusPill>
         <span className="text-xs text-muted-foreground">
           {q.code} · {q.category_name}
         </span>
@@ -134,6 +155,18 @@ export function QuestionCard({
         </div>
       </header>
 
+      {q.competency_name && (
+        <dl className="mt-3 grid gap-1 rounded-lg bg-muted/50 px-3 py-2 text-xs sm:grid-cols-[auto_1fr] sm:gap-x-3">
+          <dt className="font-semibold text-muted-foreground">Kompetensi</dt>
+          <dd>{q.competency_name}</dd>
+          {q.indicator_name && (
+            <>
+              <dt className="font-semibold text-muted-foreground">Indikator</dt>
+              <dd>{q.indicator_name}</dd>
+            </>
+          )}
+        </dl>
+      )}
       {q.text && (
         <div className="mt-3 rounded-lg border-l-4 border-secondary/40 bg-muted/50 p-3 text-sm">
           <HtmlContent html={q.text} />

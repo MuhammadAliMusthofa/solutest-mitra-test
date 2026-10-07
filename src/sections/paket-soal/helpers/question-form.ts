@@ -7,15 +7,17 @@ export interface ChoiceDraft {
   correct: boolean;
 }
 
-export interface PairDraft {
-  statement: string;
-  answer: string;
+/** Satu baris tabel Benar/Salah Kompleks. */
+export interface StatementDraft {
+  text: string;
+  value: 'benar' | 'salah';
 }
 
 export interface QuestionForm {
   type: QuestionType;
   categoryId: string;
-  chapterId: string;
+  competencyId: string;
+  indicatorId: string;
   questionText: string;
   useStimulus: boolean;
   stimulus: string;
@@ -23,9 +25,7 @@ export interface QuestionForm {
   explanation: string;
   choices: ChoiceDraft[];
   trueFalse: 'benar' | 'salah';
-  pairs: PairDraft[];
-  keys: string[];
-  rubric: string;
+  statements: StatementDraft[];
 }
 
 const escapeHtml = (s: string) =>
@@ -46,7 +46,8 @@ export const fromHtml = (html: string) =>
 export const emptyForm = (): QuestionForm => ({
   type: 1,
   categoryId: '1',
-  chapterId: '',
+  competencyId: '',
+  indicatorId: '',
   questionText: '',
   useStimulus: false,
   stimulus: '',
@@ -54,24 +55,22 @@ export const emptyForm = (): QuestionForm => ({
   explanation: '',
   choices: ['', '', '', ''].map((text, i) => ({ text, correct: i === 0 })),
   trueFalse: 'benar',
-  pairs: [
-    { statement: '', answer: '' },
-    { statement: '', answer: '' },
+  statements: [
+    { text: '', value: 'benar' },
+    { text: '', value: 'salah' },
+    { text: '', value: 'benar' },
   ],
-  keys: [''],
-  rubric: '',
 });
 
 export const questionToForm = (q: Question): QuestionForm => {
   const base = emptyForm();
   const byOrder = [...q.options].sort((a, b) => a.order - b.order);
-  const statements = byOrder.filter((o) => o.type === 'pernyataan');
-  const answers = byOrder.filter((o) => o.type === 'jawaban');
   return {
     ...base,
     type: q.type_question_id,
     categoryId: String(q.category_id),
-    chapterId: q.chapter_id ? String(q.chapter_id) : '',
+    competencyId: q.competency_id ? String(q.competency_id) : '',
+    indicatorId: q.indicator_id ? String(q.indicator_id) : '',
     questionText: q.question_text,
     useStimulus: Boolean(q.text),
     stimulus: q.text,
@@ -86,20 +85,19 @@ export const questionToForm = (q: Question): QuestionForm => {
       fromHtml(byOrder.find((o) => o.is_true)?.option_text ?? '').toLowerCase() === 'salah'
         ? 'salah'
         : 'benar',
-    pairs: statements.length
-      ? statements.map((s, i) => ({
-          statement: fromHtml(s.option_text),
-          answer: fromHtml(answers[i]?.option_text ?? ''),
-        }))
-      : base.pairs,
-    keys: q.type_question_id === 5 ? byOrder.map((o) => fromHtml(o.option_text)) : base.keys,
-    rubric: q.type_question_id === 6 ? fromHtml(byOrder[0]?.option_text ?? '') : '',
+    statements:
+      q.type_question_id === 4
+        ? byOrder.map((o) => ({
+            text: fromHtml(o.option_text),
+            value: o.is_true ? ('benar' as const) : ('salah' as const),
+          }))
+        : base.statements,
   };
 };
 
 /** Validasi per tipe; kembalikan pesan error pertama atau ''. */
 export const validateForm = (f: QuestionForm): string => {
-  if (!fromHtml(f.questionText) && !f.image) return 'Teks soal wajib diisi';
+  if (!fromHtml(f.questionText) && !f.image) return 'Teks soal atau gambar wajib diisi';
   if (f.useStimulus && !fromHtml(f.stimulus)) return 'Isi teks stimulus atau matikan stimulus';
   switch (f.type) {
     case 1:
@@ -113,11 +111,8 @@ export const validateForm = (f: QuestionForm): string => {
       return '';
     }
     case 4:
-      if (f.pairs.length < 2 || f.pairs.some((p) => !p.statement.trim() || !p.answer.trim()))
-        return 'Isi semua pasangan pernyataan–jawaban (minimal 2)';
-      return '';
-    case 5:
-      if (!f.keys.length || f.keys.some((k) => !k.trim())) return 'Isi semua kunci jawaban isian';
+      if (f.statements.length < 2 || f.statements.some((s) => !s.text.trim()))
+        return 'Isi semua pernyataan (minimal 2)';
       return '';
     default:
       return '';
@@ -142,25 +137,11 @@ export const formToBody = (f: QuestionForm): QuestionBody => {
       ];
       break;
     case 4:
-      options = [
-        ...f.pairs.map((p, i) => ({
-          option_text: toHtml(p.statement),
-          order: i,
-          type: 'pernyataan' as const,
-        })),
-        ...f.pairs.map((p, i) => ({
-          option_text: toHtml(p.answer),
-          order: f.pairs.length + i,
-          type: 'jawaban' as const,
-          is_true: true,
-        })),
-      ];
-      break;
-    case 5:
-      options = f.keys.map((k, i) => ({ option_text: toHtml(k), is_true: true, order: i }));
-      break;
-    case 6:
-      options = f.rubric.trim() ? [{ option_text: toHtml(f.rubric), is_true: true, order: 0 }] : [];
+      options = f.statements.map((s, i) => ({
+        option_text: toHtml(s.text),
+        is_true: s.value === 'benar',
+        order: i,
+      }));
       break;
     default:
       break;
@@ -171,7 +152,8 @@ export const formToBody = (f: QuestionForm): QuestionBody => {
     description: f.explanation,
     text: f.useStimulus ? f.stimulus : '',
     text_image: '',
-    chapter_id: f.chapterId ? Number(f.chapterId) : null,
+    competency_id: f.competencyId ? Number(f.competencyId) : null,
+    indicator_id: f.competencyId && f.indicatorId ? Number(f.indicatorId) : null,
     category_id: Number(f.categoryId) || 1,
     options,
     attachments: f.image ? [{ type: 'image', path: f.image }] : [],

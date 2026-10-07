@@ -5,7 +5,6 @@ import type { QuestionForm } from '../helpers/question-form';
 import { Input } from 'src/components/ui/input';
 import { Button } from 'src/components/ui/button';
 import { Checkbox } from 'src/components/ui/checkbox';
-import { Textarea } from 'src/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from 'src/components/ui/radio-group';
 
 import { cn } from 'src/lib/utils';
@@ -14,6 +13,7 @@ import { Iconify } from 'src/components/iconify/iconify';
 
 const LETTERS = 'ABCDEFGHIJ';
 const MAX_CHOICES = 6;
+const MAX_STATEMENTS = 10;
 
 interface Props {
   form: QuestionForm;
@@ -118,120 +118,72 @@ export function AnswerEditor({ form, update }: Props) {
     );
   }
 
-  if (type === 4) {
-    return (
-      <div className="space-y-2">
-        <p className="text-xs text-muted-foreground">
-          Setiap baris adalah pasangan benar. Siswa akan melihat jawaban dalam urutan acak.
-        </p>
-        {form.pairs.map((p, i) => (
-          <div key={i} className="grid items-center gap-2 sm:grid-cols-[1fr_auto_1fr_auto]">
-            <Input
-              value={p.statement}
-              onChange={(e) =>
-                update({
-                  pairs: form.pairs.map((x, idx) =>
-                    idx === i ? { ...x, statement: e.target.value } : x
-                  ),
-                })
-              }
-              placeholder={`Pernyataan ${i + 1}`}
-            />
-            <Iconify
-              icon="solar:arrow-right-linear"
-              size={18}
-              className="hidden text-muted-foreground sm:block"
-            />
-            <Input
-              value={p.answer}
-              onChange={(e) =>
-                update({
-                  pairs: form.pairs.map((x, idx) =>
-                    idx === i ? { ...x, answer: e.target.value } : x
-                  ),
-                })
-              }
-              placeholder={`Jawaban ${i + 1}`}
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              aria-label={`Hapus pasangan ${i + 1}`}
-              disabled={form.pairs.length <= 2}
-              onClick={() => update({ pairs: form.pairs.filter((_, idx) => idx !== i) })}
-            >
-              <Iconify icon="solar:close-circle-linear" size={18} />
-            </Button>
-          </div>
-        ))}
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={form.pairs.length >= 8}
-          onClick={() => update({ pairs: [...form.pairs, { statement: '', answer: '' }] })}
-        >
-          <Iconify icon="solar:add-circle-linear" size={16} />
-          Tambah pasangan
-        </Button>
-      </div>
-    );
-  }
-
-  if (type === 5) {
-    return (
-      <div className="space-y-2">
-        <p className="text-xs text-muted-foreground">
-          Satu kolom isian per kunci. Penilaian tidak membedakan huruf besar/kecil.
-        </p>
-        {form.keys.map((k, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <span className="w-16 text-sm text-muted-foreground">Kolom {i + 1}</span>
-            <Input
-              value={k}
-              onChange={(e) =>
-                update({ keys: form.keys.map((x, idx) => (idx === i ? e.target.value : x)) })
-              }
-              placeholder="Kunci jawaban"
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              aria-label={`Hapus kolom ${i + 1}`}
-              disabled={form.keys.length <= 1}
-              onClick={() => update({ keys: form.keys.filter((_, idx) => idx !== i) })}
-            >
-              <Iconify icon="solar:close-circle-linear" size={18} />
-            </Button>
-          </div>
-        ))}
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={form.keys.length >= 5}
-          onClick={() => update({ keys: [...form.keys, ''] })}
-        >
-          <Iconify icon="solar:add-circle-linear" size={16} />
-          Tambah kolom
-        </Button>
-      </div>
-    );
-  }
-
+  // 4 · Benar/Salah Kompleks: tabel pernyataan, tiap baris diberi kunci Benar/Salah
+  const setStatement = (i: number, patch: Partial<QuestionForm['statements'][number]>) =>
+    update({
+      statements: form.statements.map((s, idx) => (idx === i ? { ...s, ...patch } : s)),
+    });
   return (
     <div className="space-y-2">
       <p className="text-xs text-muted-foreground">
-        Rubrik/jawaban acuan untuk penilaian esai (opsional).
+        Tulis setiap pernyataan lalu tentukan kuncinya. Siswa memilih Benar/Salah per baris; nilai
+        dihitung proporsional dari jumlah baris yang tepat.
       </p>
-      <Textarea
-        value={form.rubric}
-        onChange={(e) => update({ rubric: e.target.value })}
-        rows={4}
-        placeholder="mis. Jawaban memuat definisi, contoh, dan alasan."
-      />
+      {form.statements.map((s, i) => (
+        <div
+          key={i}
+          className="grid items-center gap-2 rounded-lg p-2 ring-1 ring-border sm:grid-cols-[auto_1fr_auto_auto]"
+        >
+          <span className="w-6 text-center text-sm font-semibold">{i + 1}</span>
+          <Input
+            value={s.text}
+            onChange={(e) => setStatement(i, { text: e.target.value })}
+            placeholder={`Pernyataan ${i + 1}`}
+            aria-label={`Pernyataan ${i + 1}`}
+          />
+          <RadioGroup
+            value={s.value}
+            onValueChange={(v) => setStatement(i, { value: v as 'benar' | 'salah' })}
+            className="flex gap-2"
+            aria-label={`Kunci pernyataan ${i + 1}`}
+          >
+            {(['benar', 'salah'] as const).map((v) => (
+              <label
+                key={v}
+                className={cn(
+                  'flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium ring-1 ring-border',
+                  v === 'benar'
+                    ? 'has-[[data-state=checked]]:bg-success/8 has-[[data-state=checked]]:text-success has-[[data-state=checked]]:ring-success/40'
+                    : 'has-[[data-state=checked]]:bg-destructive/8 has-[[data-state=checked]]:text-destructive has-[[data-state=checked]]:ring-destructive/40'
+                )}
+              >
+                <RadioGroupItem value={v} />
+                <span className="capitalize">{v}</span>
+              </label>
+            ))}
+          </RadioGroup>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label={`Hapus pernyataan ${i + 1}`}
+            disabled={form.statements.length <= 2}
+            onClick={() => update({ statements: form.statements.filter((_, idx) => idx !== i) })}
+          >
+            <Iconify icon="solar:close-circle-linear" size={18} />
+          </Button>
+        </div>
+      ))}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        disabled={form.statements.length >= MAX_STATEMENTS}
+        onClick={() => update({ statements: [...form.statements, { text: '', value: 'benar' }] })}
+      >
+        <Iconify icon="solar:add-circle-linear" size={16} />
+        Tambah pernyataan
+      </Button>
     </div>
   );
 }

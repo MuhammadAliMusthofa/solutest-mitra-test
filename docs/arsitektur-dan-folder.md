@@ -77,7 +77,7 @@ sections/<modul>/
 | `dashboard` | Ringkasan Utama (admin) / Ringkasan (guru) |
 | `analitik` | Peringkat sekolah, detail siswa + hasil per soal, regional (peta), butir soal, indikator |
 | `progres` | Progres sekolah/siswa antar tryout + detail tren |
-| `paket-soal` | Daftar paket, detail, editor soal 6 tipe, generate dari bank soal |
+| `paket-soal` | Daftar paket, detail, salin paket, editor soal 4 tipe (PG, PG Kompleks, Benar/Salah, Benar/Salah Kompleks) dengan gambar, hapus soal massal |
 | `jadwal-tryout` | Jadwal + dialog jadwalkan (kode `SLT-XXXXXX-TKA`) |
 | `manajemen-siswa` | Daftar siswa + import Excel/CSV |
 | `manajemen-guru` | CRUD guru + sekolah yang diampu |

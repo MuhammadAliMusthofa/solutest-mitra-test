@@ -113,23 +113,29 @@ sebelumnya `> 2` naik, `< −2` turun, selain itu stabil, `< 2` tryout `kurang-d
 | Method | Path | Body / Query → `data` |
 | --- | --- | --- |
 | GET | `/master/classes` · `/master/subjects` · `/master/categories` | → `{ id, name }[]` |
-| GET | `/master/chapters` | `class_id, subject_id` → `ChapterOption[]` |
+| GET | `/master/competencies` | `class_id, subject_id` (kelas & mapel paket) → `CompetencyOption[]` (`id, code, name, class_id, subject_id, order`) |
+| GET | `/master/indicators` | `competency_id` → `IndicatorOption[]` (`id, code, name, competency_id, order`) |
 | GET | `/packages` | `search, subject_id, page, per_page` → paginasi `Package` |
 | GET | `/packages/options` | → `PackageOption[]` (paket berisi soal, untuk jadwal) |
 | POST | `/packages` | `PackageBody` → `Package` (`code` dibuat backend, unik) |
-| GET | `/packages/:id` | → `PackageDetail` (chapters + questions dengan kunci) |
+| GET | `/packages/:id` | → `PackageDetail` (questions dengan kunci) |
 | PUT | `/packages/:id` | `PackageBody` → `Package` |
 | DELETE | `/packages/:id` | 422 bila sudah dipakai jadwal |
 | POST | `/packages/:id/questions` | `QuestionBody` → `Question` |
 | GET/PUT/DELETE | `/packages/:id/questions/:qid` | `QuestionBody` → `Question` |
-| POST | `/packages/:id/generate` | `{ chapter_ids, type_ids, count (1–50) }` → `PackageDetail` |
+| POST | `/packages/:id/duplicate` | → `Package` baru (judul `Salinan — …`, kode baru, semua soal ikut disalin dengan id baru) |
+| POST | `/packages/:id/questions/bulk-delete` | `{ question_ids: number[] }` → hapus massal soal dari paket |
 | GET | `/schedules` | `search, status (scheduled/ongoing/finished), page` → paginasi `TryoutSchedule` (status dihitung dari waktu) |
 | POST | `/schedules` | `CreateTryoutScheduleBody` → `TryoutSchedule` dengan `code` baru `SLT-XXXXXX-TKA` |
 | DELETE | `/schedules/:id` | hanya status `scheduled` |
 
-Validasi soal per tipe: PG/Benar-Salah tepat 1 kunci; PG Kompleks ≥ 1 kunci; Menjodohkan ≥ 2 pasang
-(`type: pernyataan|jawaban`, pasangan = urutan `order`); Isian ≥ 1 kunci (`is_true`); Esai opsional
-rubrik.
+Tipe soal hanya 4: `1` PG, `2` PG Kompleks, `3` Benar/Salah, `4` Benar/Salah Kompleks (tabel). Soal dibuat
+manual (tanpa generate); gambar soal dikirim di `attachments` (`type: image`). Validasi: teks soal atau gambar
+wajib; PG/Benar-Salah tepat 1 kunci; PG Kompleks ≥ 1 kunci; B/S Kompleks ≥ 2 pernyataan, tiap opsi = satu
+baris tabel dengan `is_true` = kunci Benar (`false` = Salah), urut `order`.
+Paket hanya menyimpan `title, class_id, subject_id` (tanpa bab). Tiap soal menyimpan `competency_id` &
+`indicator_id` (opsional, indikator harus milik kompetensi); respons `Question` menyertakan
+`competency_name` & `indicator_name`.
 
 ## 7. Anggota mitra 🔒 (admin)
 
@@ -180,5 +186,5 @@ rubrik.
 Tenggat dihitung FE = min(`start_time` + `duration`, `end_time`); backend wajib menolak submit/simpan
 setelah tenggat + toleransi kecil dan mengumpulkan otomatis pengerjaan yang melewati tenggat.
 
-Penilaian per tipe mengikuti `src/mocks/scoring.ts` (Menjodohkan & Isian proporsional; Esai dinilai
-backend/AI).
+Penilaian per tipe mengikuti `src/mocks/scoring.ts` (PG/Benar-Salah/PG Kompleks 0 atau 100; Benar/Salah
+Kompleks proporsional per pernyataan yang tepat).

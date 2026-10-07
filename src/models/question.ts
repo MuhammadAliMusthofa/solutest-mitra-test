@@ -1,18 +1,16 @@
 // Paket soal & soal (bank soal mitra). Dipakai admin & guru.
 
 /**
- * Tipe soal (id sama dengan solutest):
- * 1 PG · 2 PG Kompleks · 3 Benar/Salah · 4 Menjodohkan · 5 Isian Singkat · 6 Esai
+ * Tipe soal:
+ * 1 PG · 2 PG Kompleks · 3 Benar/Salah · 4 Benar/Salah Kompleks (tabel pernyataan Benar/Salah)
  */
-export type QuestionType = 1 | 2 | 3 | 4 | 5 | 6;
+export type QuestionType = 1 | 2 | 3 | 4;
 
 export const QUESTION_TYPES: { id: QuestionType; name: string; short: string }[] = [
   { id: 1, name: 'Pilihan Ganda', short: 'PG' },
   { id: 2, name: 'Pilihan Ganda Kompleks', short: 'PG Kompleks' },
   { id: 3, name: 'Benar / Salah', short: 'Benar/Salah' },
-  { id: 4, name: 'Menjodohkan', short: 'Menjodohkan' },
-  { id: 5, name: 'Isian Singkat', short: 'Isian' },
-  { id: 6, name: 'Esai', short: 'Esai' },
+  { id: 4, name: 'Benar / Salah Kompleks', short: 'B/S Kompleks' },
 ];
 
 export const questionTypeName = (id: number) =>
@@ -25,11 +23,11 @@ export interface Attachment {
 
 export interface QuestionOption {
   id: number;
+  /** teks pilihan · B/S Kompleks: teks pernyataan (satu baris tabel) */
   option_text: string;
+  /** pilihan benar · B/S Kompleks: pernyataan bernilai Benar (false = Salah) */
   is_true?: boolean;
   order: number;
-  /** khusus menjodohkan */
-  type?: 'pernyataan' | 'jawaban';
 }
 
 export interface Question {
@@ -42,12 +40,17 @@ export interface Question {
   /** stimulus/bacaan (HTML), opsional */
   text: string;
   text_image: string;
-  chapter_id: number | null;
+  /** kompetensi soal (master /master/competencies sesuai kelas & mapel paket) */
+  competency_id: number | null;
+  competency_name: string | null;
+  /** indikator soal (master /master/indicators milik kompetensi) */
+  indicator_id: number | null;
+  indicator_name: string | null;
   category_id: number;
   category_name: string;
   options: QuestionOption[];
   attachments: Attachment[];
-  /** manual = dibuat mitra; bank = hasil generate dari bank soal */
+  /** manual = dibuat mitra; bank = soal contoh bawaan */
   source: 'manual' | 'bank';
   createdAt: string;
   updatedAt: string;
@@ -61,7 +64,6 @@ export interface Package {
   class_name: string;
   subject_id: number;
   subject_name: string;
-  chapter_ids: number[];
   question_count: number;
   /** jumlah jadwal tryout yang memakai paket ini (paket terpakai tidak bisa dihapus) */
   schedule_count: number;
@@ -71,7 +73,6 @@ export interface Package {
 }
 
 export interface PackageDetail extends Package {
-  chapters: ChapterOption[];
   questions: Question[];
 }
 
@@ -79,7 +80,6 @@ export interface PackageBody {
   title: string;
   class_id: number;
   subject_id: number;
-  chapter_ids: number[];
 }
 
 export interface QuestionBody {
@@ -88,16 +88,15 @@ export interface QuestionBody {
   description: string;
   text: string;
   text_image: string;
-  chapter_id: number | null;
+  competency_id: number | null;
+  indicator_id: number | null;
   category_id: number;
   options: Omit<QuestionOption, 'id'>[];
   attachments: Attachment[];
 }
 
-export interface GenerateQuestionsBody {
-  chapter_ids: number[];
-  type_ids: QuestionType[];
-  count: number;
+export interface DeleteQuestionsBody {
+  question_ids: number[];
 }
 
 export interface ClassOption {
@@ -110,11 +109,22 @@ export interface SubjectOption {
   name: string;
 }
 
-export interface ChapterOption {
+/** Kompetensi per kelas & mapel — GET /master/competencies?class_id&subject_id */
+export interface CompetencyOption {
   id: number;
+  code: string;
   name: string;
-  subject_id: number;
   class_id: number;
+  subject_id: number;
+  order: number;
+}
+
+/** Indikator milik satu kompetensi — GET /master/indicators?competency_id */
+export interface IndicatorOption {
+  id: number;
+  code: string;
+  name: string;
+  competency_id: number;
   order: number;
 }
 

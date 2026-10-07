@@ -1,7 +1,7 @@
 'use client';
 
 import type { ListParams } from 'src/models/api';
-import type { PackageBody, QuestionBody, GenerateQuestionsBody } from 'src/models/question';
+import type { PackageBody, QuestionBody } from 'src/models/question';
 
 import { toast } from 'sonner';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -12,7 +12,12 @@ import { paketService, masterService } from 'src/services/paket';
 
 const KEY = 'paket';
 
-export function useMasterData(filter?: { class_id?: number; subject_id?: number }) {
+/** Master data; kompetensi butuh kelas & mapel, indikator butuh kompetensi. */
+export function useMasterData(filter?: {
+  class_id?: number;
+  subject_id?: number;
+  competency_id?: number;
+}) {
   return {
     classes: useQuery({
       queryKey: ['master', 'classes'],
@@ -29,10 +34,20 @@ export function useMasterData(filter?: { class_id?: number; subject_id?: number 
       queryFn: masterService.categories,
       staleTime: Infinity,
     }),
-    chapters: useQuery({
-      queryKey: ['master', 'chapters', filter?.class_id, filter?.subject_id],
-      queryFn: () => masterService.chapters(filter ?? {}),
+    competencies: useQuery({
+      queryKey: ['master', 'competencies', filter?.class_id, filter?.subject_id],
+      queryFn: () =>
+        masterService.competencies({
+          class_id: filter?.class_id,
+          subject_id: filter?.subject_id,
+        }),
       enabled: Boolean(filter?.class_id && filter?.subject_id),
+      staleTime: Infinity,
+    }),
+    indicators: useQuery({
+      queryKey: ['master', 'indicators', filter?.competency_id],
+      queryFn: () => masterService.indicators({ competency_id: filter?.competency_id }),
+      enabled: Boolean(filter?.competency_id),
       staleTime: Infinity,
     }),
   };
@@ -99,11 +114,19 @@ export function usePaketMutations() {
       },
       onError,
     }),
-    generate: useMutation({
-      mutationFn: ({ paketId, body }: { paketId: string; body: GenerateQuestionsBody }) =>
-        paketService.generate(paketId, body),
+    removeQuestions: useMutation({
+      mutationFn: ({ paketId, ids }: { paketId: string; ids: number[] }) =>
+        paketService.removeQuestions(paketId, { question_ids: ids }),
       onSuccess: (_, v) => {
-        toast.success(`${v.body.count} soal dari bank soal ditambahkan`);
+        toast.success(`${v.ids.length} soal dihapus dari paket`);
+        refresh();
+      },
+      onError,
+    }),
+    duplicatePackage: useMutation({
+      mutationFn: (id: number) => paketService.duplicate(id),
+      onSuccess: (pkg) => {
+        toast.success(`Paket disalin sebagai "${pkg.title}"`);
         refresh();
       },
       onError,

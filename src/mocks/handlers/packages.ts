@@ -10,7 +10,7 @@ import type {
   QuestionBody,
   QuestionType,
   PackageDetail,
-  GenerateQuestionsBody,
+  DeleteQuestionsBody,
 } from 'src/models/question';
 
 import { ROLES } from 'src/config/roles';
@@ -18,10 +18,10 @@ import { ROLES } from 'src/config/roles';
 import { loadDb, nextId, resetDb, mutateDb, packageCode } from '../db';
 import {
   MOCK_CLASSES,
-  MOCK_CHAPTERS,
   MOCK_SUBJECTS,
+  MOCK_INDICATORS,
   MOCK_CATEGORIES,
-  buildBankQuestion,
+  MOCK_COMPETENCIES,
 } from '../seed';
 import {
   fail,
@@ -37,11 +37,16 @@ import {
 export const listClasses = () => MOCK_CLASSES;
 export const listSubjects = () => MOCK_SUBJECTS;
 export const listCategories = () => MOCK_CATEGORIES;
-export const listChapters = ({ query }: MockContext) =>
-  MOCK_CHAPTERS.filter(
+export const listCompetencies = ({ query }: MockContext) =>
+  MOCK_COMPETENCIES.filter(
     (c) =>
       (!query.class_id || c.class_id === Number(query.class_id)) &&
       (!query.subject_id || c.subject_id === Number(query.subject_id))
+  );
+
+export const listIndicators = ({ query }: MockContext) =>
+  MOCK_INDICATORS.filter(
+    (i) => !query.competency_id || i.competency_id === Number(query.competency_id)
   );
 
 // ------------------------------------------------------------------ paket
@@ -56,7 +61,6 @@ const toPackage = (db: MockDb, p: StoredPackage): Package => ({
   class_name: MOCK_CLASSES.find((c) => c.id === p.class_id)?.name ?? '-',
   subject_id: p.subject_id,
   subject_name: MOCK_SUBJECTS.find((s) => s.id === p.subject_id)?.name ?? '-',
-  chapter_ids: p.chapter_ids,
   question_count: p.question_ids.length,
   schedule_count: scheduleCount(db, p.id),
   created_by: p.created_by,
@@ -66,7 +70,6 @@ const toPackage = (db: MockDb, p: StoredPackage): Package => ({
 
 const toDetail = (db: MockDb, p: StoredPackage): PackageDetail => ({
   ...toPackage(db, p),
-  chapters: MOCK_CHAPTERS.filter((c) => p.chapter_ids.includes(c.id)),
   questions: p.question_ids.map((id) => db.questions[id]).filter(Boolean),
 });
 
@@ -116,7 +119,6 @@ export const createPackage = (ctx: MockContext) => {
       title: body.title.trim(),
       class_id: Number(body.class_id),
       subject_id: Number(body.subject_id),
-      chapter_ids: body.chapter_ids ?? [],
       question_ids: [],
       created_by: user.full_name,
       createdAt: now,
@@ -143,7 +145,6 @@ export const updatePackage = (ctx: MockContext) => {
       title: body.title.trim(),
       class_id: Number(body.class_id),
       subject_id: Number(body.subject_id),
-      chapter_ids: body.chapter_ids ?? pkg.chapter_ids,
       updatedAt: new Date().toISOString(),
     });
     return toPackage(db, pkg);
@@ -177,18 +178,13 @@ const validateQuestion = (body: QuestionBody) => {
       if (options.length < 2) fail(422, 'Minimal 2 pilihan jawaban');
       if (!options.some((o) => o.is_true)) fail(422, 'Tandai minimal satu jawaban benar');
       break;
-    case 4: {
-      const statements = options.filter((o) => o.type === 'pernyataan').length;
-      const answers = options.filter((o) => o.type === 'jawaban').length;
-      if (statements < 2 || statements !== answers)
-        fail(422, 'Isi minimal 2 pasangan pernyataan–jawaban');
-      break;
-    }
-    case 5:
-      if (!options.some((o) => o.option_text.trim())) fail(422, 'Isi kunci jawaban');
+    case 4:
+      if (options.length < 2) fail(422, 'Minimal 2 pernyataan');
+      if (options.some((o) => !o.option_text.replace(/<[^>]+>/g, '').trim()))
+        fail(422, 'Isi semua pernyataan');
       break;
     default:
-      break;
+      fail(422, 'Tipe soal tidak dikenal');
   }
 };
 
@@ -196,6 +192,11 @@ const buildQuestion = (id: number, body: QuestionBody, previous?: Question): Que
   const now = new Date().toISOString();
   const category =
     MOCK_CATEGORIES.find((c) => c.id === Number(body.category_id)) ?? MOCK_CATEGORIES[0];
+  const competency = MOCK_COMPETENCIES.find((c) => c.id === Number(body.competency_id));
+  // indikator hanya berlaku bila milik kompetensi terpilih
+  const indicator = MOCK_INDICATORS.find(
+    (i) => i.id === Number(body.indicator_id) && i.competency_id === competency?.id
+  );
   return {
     id,
     code: previous?.code ?? `MTR-${String(id).padStart(5, '0')}`,
@@ -204,10 +205,18 @@ const buildQuestion = (id: number, body: QuestionBody, previous?: Question): Que
     description: body.description ?? '',
     text: body.text ?? '',
     text_image: body.text_image ?? '',
-    chapter_id: body.chapter_id ?? null,
+    competency_id: competency?.id ?? null,
+    competency_name: competency?.name ?? null,
+    indicator_id: indicator?.id ?? null,
+    indicator_name: indicator?.name ?? null,
     category_id: category.id,
     category_name: category.name,
-    options: (body.options ?? []).map((o, i) => ({ ...o, id: id * 10 + i, order: o.order ?? i })),
+    options: (body.options ?? []).map((o, i) => ({
+      option_text: o.option_text,
+      is_true: Boolean(o.is_true),
+      id: id * 10 + i,
+      order: o.order ?? i,
+    })),
     attachments: body.attachments ?? [],
     source: previous?.source ?? 'manual',
     createdAt: previous?.createdAt ?? now,
@@ -264,25 +273,54 @@ export const deleteQuestion = (ctx: MockContext) => {
   });
 };
 
-export const generateQuestions = (ctx: MockContext) => {
+export const deleteQuestions = (ctx: MockContext) => {
   requireUser(ctx, PANEL_ROLES);
-  const body = ctx.body as GenerateQuestionsBody;
-  const count = Math.min(Math.max(Number(body.count) || 0, 1), 50);
-  if (!body.chapter_ids?.length) fail(422, 'Pilih minimal satu bab');
-  if (!body.type_ids?.length) fail(422, 'Pilih minimal satu tipe soal');
+  const ids = new Set(((ctx.body as DeleteQuestionsBody)?.question_ids ?? []).map(Number));
+  if (!ids.size) fail(422, 'Pilih minimal satu soal');
   return mutateDb((db) => {
     const pkg = findPackage(db, ctx.params.id);
-    const chapters = MOCK_CHAPTERS.filter((c) => body.chapter_ids.includes(c.id));
-    for (let i = 0; i < count; i += 1) {
-      const id = nextId(db);
-      const chapter = chapters[i % chapters.length];
-      const type = body.type_ids[i % body.type_ids.length];
-      db.questions[id] = buildBankQuestion(id, chapter, type, (i % 5) + 1);
-      pkg.question_ids.push(id);
-    }
-    pkg.chapter_ids = Array.from(new Set([...pkg.chapter_ids, ...body.chapter_ids]));
+    const before = pkg.question_ids.length;
+    pkg.question_ids = pkg.question_ids.filter((id) => !ids.has(id));
     pkg.updatedAt = new Date().toISOString();
-    return toDetail(db, pkg);
+    return { deleted: before - pkg.question_ids.length };
+  });
+};
+
+/** Salin paket: soal ikut disalin (id & kode soal baru) sehingga paket salinan bisa diubah bebas. */
+export const duplicatePackage = (ctx: MockContext) => {
+  const user = requireUser(ctx, PANEL_ROLES);
+  return mutateDb((db) => {
+    const source = findPackage(db, ctx.params.id);
+    const now = new Date().toISOString();
+    const questionIds = source.question_ids
+      .map((qid) => db.questions[qid])
+      .filter(Boolean)
+      .map((q) => {
+        const id = nextId(db);
+        db.questions[id] = {
+          ...q,
+          id,
+          code: `MTR-${String(id).padStart(5, '0')}`,
+          options: q.options.map((o, i) => ({ ...o, id: id * 10 + i })),
+          attachments: q.attachments.map((a) => ({ ...a })),
+          createdAt: now,
+          updatedAt: now,
+        };
+        return id;
+      });
+    const id = nextId(db);
+    const pkg: StoredPackage = {
+      ...source,
+      id,
+      code: packageCode(id),
+      title: `Salinan — ${source.title}`,
+      question_ids: questionIds,
+      created_by: user.full_name,
+      createdAt: now,
+      updatedAt: now,
+    };
+    db.packages.unshift(pkg);
+    return toPackage(db, pkg);
   });
 };
 

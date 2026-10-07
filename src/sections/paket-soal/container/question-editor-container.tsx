@@ -35,9 +35,7 @@ const TYPE_ICONS: Record<QuestionType, string> = {
   1: 'solar:list-check-linear',
   2: 'solar:checklist-minimalistic-linear',
   3: 'solar:check-square-linear',
-  4: 'solar:link-round-angle-linear',
-  5: 'solar:text-field-linear',
-  6: 'solar:document-text-linear',
+  4: 'solar:checklist-linear',
 };
 
 /** Buat / ubah satu soal dalam paket. `questionId` kosong = soal baru. */
@@ -47,10 +45,6 @@ export function QuestionEditorContainer() {
   const { id: paketId, questionId } = useParams<{ id: string; questionId?: string }>();
   const editing = Boolean(questionId && questionId !== 'baru');
   const paket = usePackageDetail(paketId);
-  const master = useMasterData({
-    class_id: paket.data?.class_id,
-    subject_id: paket.data?.subject_id,
-  });
   const existing = useQuery({
     queryKey: ['paket', 'question', paketId, questionId],
     queryFn: () => paketService.question(paketId, questionId!),
@@ -59,6 +53,12 @@ export function QuestionEditorContainer() {
   const { saveQuestion } = usePaketMutations();
   const [form, setForm] = useState<QuestionForm>(emptyForm);
   const [error, setError] = useState('');
+  // kompetensi mengikuti kelas & mapel paket; indikator mengikuti kompetensi terpilih
+  const master = useMasterData({
+    class_id: paket.data?.class_id,
+    subject_id: paket.data?.subject_id,
+    competency_id: Number(form.competencyId) || undefined,
+  });
   const update = (patch: Partial<QuestionForm>) => setForm((f) => ({ ...f, ...patch }));
 
   // isi form saat data soal (mode ubah) selesai dimuat
@@ -83,7 +83,8 @@ export function QuestionEditorContainer() {
               ...emptyForm(),
               type: form.type,
               categoryId: form.categoryId,
-              chapterId: form.chapterId,
+              competencyId: form.competencyId,
+              indicatorId: form.indicatorId,
             });
             window.scrollTo({ top: 0, behavior: 'smooth' });
           } else router.push(back);
@@ -115,7 +116,7 @@ export function QuestionEditorContainer() {
       <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
         <div className="space-y-6">
           <SectionCard title="Tipe soal">
-            <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+            <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
               {QUESTION_TYPES.map((t) => (
                 <button
                   key={t.id}
@@ -177,7 +178,10 @@ export function QuestionEditorContainer() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Gambar (opsional)</Label>
+                <Label>Gambar soal (opsional)</Label>
+                <p className="text-xs text-muted-foreground">
+                  Ditampilkan di bawah pertanyaan, mis. grafik, tabel, atau ilustrasi.
+                </p>
                 <ImageUploader
                   value={form.image}
                   onChange={(image) => update({ image })}
@@ -218,18 +222,45 @@ export function QuestionEditorContainer() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="q-chapter">Bab</Label>
+                <Label htmlFor="q-competency">Kompetensi</Label>
                 <SelectField
-                  id="q-chapter"
-                  value={form.chapterId}
-                  onChange={(chapterId) => update({ chapterId })}
-                  options={(master.chapters.data ?? []).map((c) => ({
+                  id="q-competency"
+                  value={form.competencyId}
+                  // ganti kompetensi → indikator lama tidak berlaku lagi
+                  onChange={(competencyId) => update({ competencyId, indicatorId: '' })}
+                  options={(master.competencies.data ?? []).map((c) => ({
                     value: String(c.id),
-                    label: c.name,
+                    label: `${c.code} · ${c.name}`,
                   }))}
-                  allLabel="Tanpa bab"
+                  allLabel="Tanpa kompetensi"
+                  disabled={!paket.data}
                   className="sm:w-full"
                 />
+                {paket.data && (
+                  <p className="text-xs text-muted-foreground">
+                    Kelas {paket.data.class_name} · {paket.data.subject_name}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="q-indicator">Indikator</Label>
+                <SelectField
+                  id="q-indicator"
+                  value={form.indicatorId}
+                  onChange={(indicatorId) => update({ indicatorId })}
+                  options={(master.indicators.data ?? []).map((ind) => ({
+                    value: String(ind.id),
+                    label: `${ind.code} · ${ind.name}`,
+                  }))}
+                  allLabel="Tanpa indikator"
+                  disabled={!form.competencyId}
+                  className="sm:w-full"
+                />
+                {!form.competencyId && (
+                  <p className="text-xs text-muted-foreground">
+                    Pilih kompetensi dulu untuk menampilkan indikatornya.
+                  </p>
+                )}
               </div>
               {error && (
                 <p

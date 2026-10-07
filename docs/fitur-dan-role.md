@@ -10,7 +10,7 @@
 | Progres Tryout | `/admin/progres/sekolah`, `/admin/progres/siswa` | Status Naik / Stabil (±2) / Turun / Data belum cukup, detail tren total & per mapel, perubahan predikat |
 | Analisis Butir Soal | `/admin/analitik/soal` | Ringkasan mudah/sedang/sulit, persentase benar-salah-kosong per soal, pembahasan |
 | Analisis Indikator | `/admin/analitik/indikator` | Kompetensi → sub-kompetensi → indikator dengan level capaian + contoh soal |
-| Paket Soal | `/admin/paket-soal` | CRUD paket (kode paket otomatis), editor soal 6 tipe, generate dari bank soal |
+| Paket Soal | `/admin/paket-soal` | CRUD paket (kode paket otomatis), salin paket, editor soal 4 tipe (PG, PG Kompleks, Benar/Salah, Benar/Salah Kompleks) dengan gambar, hapus soal massal |
 | Jadwal Tryout | `/admin/jadwal-tryout` | Jadwalkan (paket, waktu, durasi, deteksi kecurangan) → kode `SLT-XXXXXX-TKA` |
 | Siswa | `/admin/siswa` (+ `/import`) | Daftar siswa mitra, import batch .xlsx/.csv (template, validasi per baris, hasil) |
 | Guru | `/admin/guru` | **Baru.** Tambah/ubah/hapus guru, sekolah yang diampu, aktif/nonaktif |
@@ -46,7 +46,7 @@ Navbar (tanpa sidebar) dengan **logo & nama mitra**.
 | Mekanisme | Implementasi |
 | --- | --- |
 | Store soal & jawaban | `useExamSessionStore` (padanan `to-qn-store`) & `useExamAnswerStore` (padanan `latihan-soal-jawaban-siswa-store`), **persist localStorage** → refresh/tutup tab tidak menghilangkan jawaban |
-| Format jawaban | PG/Benar-Salah `["id"]`, PG Kompleks `["id",…]`, Menjodohkan `[[pernyataanId, jawabanId]]`, Isian `["teks",…]`, Esai `["teks"]`; tiap entri menyimpan `isCompleted`, `isDoubt`, `index`, `duration_seconds` |
+| Format jawaban | PG/Benar-Salah `["id"]`, PG Kompleks `["id",…]`, Benar/Salah Kompleks `[[pernyataanId, 1 (Benar) atau 0 (Salah)]]`; tiap entri menyimpan `isCompleted`, `isDoubt`, `index`, `duration_seconds` |
 | Nomor soal di URL | hashids dengan salt & alfabet yang sama (`/siswa/ujian/[practiceId]/Z9GJZ0JYL7`) |
 | Simpan sementara | Setiap pindah soal (sebelumnya/berikutnya/daftar nomor/keyboard ←→) → `POST /student/practices/:id/answers`. Tambahan pengaman: berkala 60 detik & saat tab disembunyikan; gagal simpan tidak memblokir siswa |
 | Lanjutkan | Kartu "Tryout belum selesai" / tombol di detail → muat soal (`resume`) **wajib berhasil** sebelum navigasi (fix Issue #1); jawaban tersimpan dimuat paralel & dinormalisasi (string JSON berlapis → array); gagal dimuat tidak memblokir |

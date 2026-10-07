@@ -52,7 +52,7 @@ export function PaketListContainer() {
     per_page: 9,
   });
   const { subjects } = useMasterData();
-  const { removePackage } = usePaketMutations();
+  const { removePackage, duplicatePackage } = usePaketMutations();
   const [form, setForm] = useState<{ open: boolean; initial: Package | null }>({
     open: false,
     initial: null,
@@ -71,7 +71,7 @@ export function PaketListContainer() {
     <>
       <PageHeader
         title="Paket Soal"
-        description="Susun paket soal dari soal buatan sendiri atau bank soal, lalu jadwalkan sebagai tryout."
+        description="Susun paket soal dari soal buatan sendiri (PG, PG Kompleks, Benar/Salah, Benar/Salah Kompleks), salin paket yang ada, lalu jadwalkan sebagai tryout."
         crumbs={[
           { label: 'Ringkasan', href: paths.root },
           { label: 'Kelola' },
@@ -152,6 +152,13 @@ export function PaketListContainer() {
                     <DropdownMenuItem onSelect={() => setForm({ open: true, initial: p })}>
                       <Iconify icon="solar:pen-linear" size={16} />
                       Ubah info paket
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      disabled={duplicatePackage.isPending}
+                      onSelect={() => duplicatePackage.mutate(p.id)}
+                    >
+                      <Iconify icon="solar:copy-linear" size={16} />
+                      Salin paket
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <Link href={paths.questionCreate(p.id)}>

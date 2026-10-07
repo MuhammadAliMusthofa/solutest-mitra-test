@@ -1,11 +1,9 @@
 // Pengerjaan tryout siswa: mulai, simpan sementara, lanjutkan, kumpulkan, riwayat, pembahasan.
 //
 // Format `answer` per tipe soal (sama dengan solutest):
-//  PG / Benar-Salah : ["<optionId>"]
-//  PG Kompleks      : ["<optionId>", ...]
-//  Menjodohkan      : [[pernyataanId, jawabanId | null], ...]
-//  Isian Singkat    : ["teks kolom 1", ...]
-//  Esai             : ["teks"]
+//  PG / Benar-Salah     : ["<optionId>"]
+//  PG Kompleks          : ["<optionId>", ...]
+//  Benar-Salah Kompleks : [[pernyataanId, 1 (Benar) | 0 (Salah) | null], ...]
 
 import type { Paginated } from './api';
 import type { Attachment, QuestionType } from './question';
@@ -16,7 +14,6 @@ export interface ExamOption {
   id: number;
   option_text: string;
   order: number;
-  type?: 'pernyataan' | 'jawaban';
 }
 
 /** Soal versi ujian: tanpa kunci jawaban & pembahasan. */
@@ -27,8 +24,6 @@ export interface ExamQuestion {
   question_text: string;
   text: string;
   text_image: string;
-  /** jumlah kolom isian (tipe 5) */
-  column_answer: number;
   options: ExamOption[];
   attachments: Attachment[];
 }

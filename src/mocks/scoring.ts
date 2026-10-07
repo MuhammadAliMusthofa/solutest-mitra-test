@@ -1,6 +1,6 @@
 // Penilaian jawaban simulasi per tipe soal (format jawaban: lihat src/models/exam.ts).
 
-import type { Question, QuestionOption } from 'src/models/question';
+import type { Question } from 'src/models/question';
 
 export const plainText = (html?: string | null) =>
   (html ?? '')
@@ -10,14 +10,11 @@ export const plainText = (html?: string | null) =>
     .trim()
     .toLowerCase();
 
-const byOrder = (a: QuestionOption, b: QuestionOption) => (a.order ?? 0) - (b.order ?? 0);
-
-/** Pasangan benar menjodohkan: pernyataan ke-i ↔ jawaban ke-i (urut `order`). */
-export const matchingKey = (q: Question) => {
-  const statements = q.options.filter((o) => o.type === 'pernyataan').sort(byOrder);
-  const answers = q.options.filter((o) => o.type === 'jawaban').sort(byOrder);
-  return statements.map((s, i) => [s.id, answers[i]?.id ?? null] as [number, number | null]);
-};
+/** Kunci Benar/Salah Kompleks: [pernyataanId, 1 (Benar) | 0 (Salah)] per baris tabel. */
+export const trueFalseKey = (q: Question) =>
+  [...q.options]
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    .map((o) => [o.id, o.is_true ? 1 : 0] as [number, number]);
 
 export const isAnswered = (answer: unknown) => {
   if (!Array.isArray(answer) || !answer.length) return false;
@@ -26,7 +23,7 @@ export const isAnswered = (answer: unknown) => {
   );
 };
 
-/** Skor satu soal 0–100. Esai dinilai "AI" simulasi: 70 bila diisi cukup panjang. */
+/** Skor satu soal 0–100. Benar/Salah Kompleks dinilai proporsional per pernyataan. */
 export const scoreQuestion = (q: Question, answer: unknown): number => {
   if (!isAnswered(answer)) return 0;
   const list = answer as unknown[];
@@ -41,24 +38,16 @@ export const scoreQuestion = (q: Question, answer: unknown): number => {
       return chosen.size === trueIds.length && trueIds.every((id) => chosen.has(id)) ? 100 : 0;
     }
     case 4: {
-      const key = matchingKey(q);
+      const key = trueFalseKey(q);
       if (!key.length) return 0;
-      const correct = key.filter(([s, a]) =>
-        list.some((pair) => Array.isArray(pair) && Number(pair[0]) === s && Number(pair[1]) === a)
+      const correct = key.filter(([s, v]) =>
+        list.some(
+          (row) =>
+            Array.isArray(row) && Number(row[0]) === s && row[1] !== null && Number(row[1]) === v
+        )
       ).length;
       return Math.round((correct / key.length) * 100);
     }
-    case 5: {
-      const keys = q.options.filter((o) => o.is_true).map((o) => plainText(o.option_text));
-      if (!keys.length) return 0;
-      const correct = keys.filter(
-        (k, i) =>
-          plainText(String(list[i] ?? '')) === k || list.some((v) => plainText(String(v)) === k)
-      ).length;
-      return Math.round((correct / keys.length) * 100);
-    }
-    case 6:
-      return plainText(String(list[0] ?? '')).length >= 15 ? 70 : 40;
     default:
       return 0;
   }
@@ -74,11 +63,7 @@ export const correctAnswer = (q: Question): unknown[] => {
     case 2:
       return trueOpts.map((o) => String(o.id));
     case 4:
-      return matchingKey(q);
-    case 5:
-      return trueOpts.map((o) => plainText(o.option_text));
-    case 6:
-      return ['Jawaban esai siswa yang menjelaskan konsep beserta contohnya.'];
+      return trueFalseKey(q);
     default:
       return [];
   }
@@ -93,9 +78,8 @@ export const wrongAnswer = (q: Question): unknown[] => {
     case 3:
       return falseOpt ? [String(falseOpt.id)] : [];
     case 4:
-      return matchingKey(q).map(([s], i, all) => [s, all[(i + 1) % all.length][1]]);
-    case 5:
-      return ['tidak tahu'];
+      // separuh pernyataan dibalik
+      return trueFalseKey(q).map(([s, v], i) => [s, i % 2 === 0 ? 1 - v : v]);
     default:
       return [];
   }
