@@ -53,11 +53,12 @@ export function QuestionEditorContainer() {
   const { saveQuestion } = usePaketMutations();
   const [form, setForm] = useState<QuestionForm>(emptyForm);
   const [error, setError] = useState('');
-  // kompetensi mengikuti kelas & mapel paket; indikator mengikuti kompetensi terpilih
+  // kompetensi mengikuti kelas & mapel paket → sub kompetensi → indikator (berjenjang)
   const master = useMasterData({
     class_id: paket.data?.class_id,
     subject_id: paket.data?.subject_id,
     competency_id: Number(form.competencyId) || undefined,
+    sub_competency_id: Number(form.subCompetencyId) || undefined,
   });
   const update = (patch: Partial<QuestionForm>) => setForm((f) => ({ ...f, ...patch }));
 
@@ -84,6 +85,7 @@ export function QuestionEditorContainer() {
               type: form.type,
               categoryId: form.categoryId,
               competencyId: form.competencyId,
+              subCompetencyId: form.subCompetencyId,
               indicatorId: form.indicatorId,
             });
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -226,8 +228,10 @@ export function QuestionEditorContainer() {
                 <SelectField
                   id="q-competency"
                   value={form.competencyId}
-                  // ganti kompetensi → indikator lama tidak berlaku lagi
-                  onChange={(competencyId) => update({ competencyId, indicatorId: '' })}
+                  // ganti kompetensi → sub kompetensi & indikator lama tidak berlaku lagi
+                  onChange={(competencyId) =>
+                    update({ competencyId, subCompetencyId: '', indicatorId: '' })
+                  }
                   options={(master.competencies.data ?? []).map((c) => ({
                     value: String(c.id),
                     label: `${c.code} · ${c.name}`,
@@ -243,6 +247,26 @@ export function QuestionEditorContainer() {
                 )}
               </div>
               <div className="space-y-2">
+                <Label htmlFor="q-sub-competency">Sub kompetensi</Label>
+                <SelectField
+                  id="q-sub-competency"
+                  value={form.subCompetencyId}
+                  onChange={(subCompetencyId) => update({ subCompetencyId, indicatorId: '' })}
+                  options={(master.subCompetencies.data ?? []).map((s) => ({
+                    value: String(s.id),
+                    label: `${s.code} · ${s.name}`,
+                  }))}
+                  allLabel="Tanpa sub kompetensi"
+                  disabled={!form.competencyId}
+                  className="sm:w-full"
+                />
+                {!form.competencyId && (
+                  <p className="text-xs text-muted-foreground">
+                    Pilih kompetensi dulu untuk menampilkan sub kompetensinya.
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="q-indicator">Indikator</Label>
                 <SelectField
                   id="q-indicator"
@@ -253,12 +277,12 @@ export function QuestionEditorContainer() {
                     label: `${ind.code} · ${ind.name}`,
                   }))}
                   allLabel="Tanpa indikator"
-                  disabled={!form.competencyId}
+                  disabled={!form.subCompetencyId}
                   className="sm:w-full"
                 />
-                {!form.competencyId && (
+                {!form.subCompetencyId && (
                   <p className="text-xs text-muted-foreground">
-                    Pilih kompetensi dulu untuk menampilkan indikatornya.
+                    Pilih sub kompetensi dulu untuk menampilkan indikatornya.
                   </p>
                 )}
               </div>

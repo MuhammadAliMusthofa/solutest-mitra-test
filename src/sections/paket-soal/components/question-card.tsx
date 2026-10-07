@@ -159,6 +159,12 @@ export function QuestionCard({
         <dl className="mt-3 grid gap-1 rounded-lg bg-muted/50 px-3 py-2 text-xs sm:grid-cols-[auto_1fr] sm:gap-x-3">
           <dt className="font-semibold text-muted-foreground">Kompetensi</dt>
           <dd>{q.competency_name}</dd>
+          {q.sub_competency_name && (
+            <>
+              <dt className="font-semibold text-muted-foreground">Sub kompetensi</dt>
+              <dd>{q.sub_competency_name}</dd>
+            </>
+          )}
           {q.indicator_name && (
             <>
               <dt className="font-semibold text-muted-foreground">Indikator</dt>

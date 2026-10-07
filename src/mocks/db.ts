@@ -17,7 +17,8 @@ import { buildBankQuestion, MOCK_COMPETENCIES } from './seed';
 export const DB_KEY = 'st_mock_db';
 // v2: tipe soal disederhanakan menjadi 4 (PG, PG Kompleks, Benar/Salah, Benar/Salah Kompleks)
 // v3: bab paket diganti kompetensi & indikator per soal
-const VERSION = 3;
+// v4: tambah sub kompetensi (kompetensi → sub kompetensi → indikator)
+const VERSION = 4;
 export const MOCK_PASSWORD = 'mitra123';
 
 export interface MockAccount {

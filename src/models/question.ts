@@ -43,7 +43,10 @@ export interface Question {
   /** kompetensi soal (master /master/competencies sesuai kelas & mapel paket) */
   competency_id: number | null;
   competency_name: string | null;
-  /** indikator soal (master /master/indicators milik kompetensi) */
+  /** sub kompetensi (master /master/sub-competencies milik kompetensi) */
+  sub_competency_id: number | null;
+  sub_competency_name: string | null;
+  /** indikator soal (master /master/indicators milik sub kompetensi) */
   indicator_id: number | null;
   indicator_name: string | null;
   category_id: number;
@@ -89,6 +92,7 @@ export interface QuestionBody {
   text: string;
   text_image: string;
   competency_id: number | null;
+  sub_competency_id: number | null;
   indicator_id: number | null;
   category_id: number;
   options: Omit<QuestionOption, 'id'>[];
@@ -119,12 +123,21 @@ export interface CompetencyOption {
   order: number;
 }
 
-/** Indikator milik satu kompetensi — GET /master/indicators?competency_id */
-export interface IndicatorOption {
+/** Sub kompetensi milik satu kompetensi — GET /master/sub-competencies?competency_id */
+export interface SubCompetencyOption {
   id: number;
   code: string;
   name: string;
   competency_id: number;
+  order: number;
+}
+
+/** Indikator milik satu sub kompetensi — GET /master/indicators?sub_competency_id */
+export interface IndicatorOption {
+  id: number;
+  code: string;
+  name: string;
+  sub_competency_id: number;
   order: number;
 }
 

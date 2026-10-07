@@ -135,6 +135,7 @@ const ROUTES: Route[] = [
   route('GET', '/master/classes', packages.listClasses),
   route('GET', '/master/subjects', packages.listSubjects),
   route('GET', '/master/competencies', packages.listCompetencies),
+  route('GET', '/master/sub-competencies', packages.listSubCompetencies),
   route('GET', '/master/indicators', packages.listIndicators),
   route('GET', '/master/categories', packages.listCategories),
   route('GET', '/packages', packages.listPackages),

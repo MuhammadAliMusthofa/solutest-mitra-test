@@ -17,6 +17,7 @@ export interface QuestionForm {
   type: QuestionType;
   categoryId: string;
   competencyId: string;
+  subCompetencyId: string;
   indicatorId: string;
   questionText: string;
   useStimulus: boolean;
@@ -47,6 +48,7 @@ export const emptyForm = (): QuestionForm => ({
   type: 1,
   categoryId: '1',
   competencyId: '',
+  subCompetencyId: '',
   indicatorId: '',
   questionText: '',
   useStimulus: false,
@@ -70,6 +72,7 @@ export const questionToForm = (q: Question): QuestionForm => {
     type: q.type_question_id,
     categoryId: String(q.category_id),
     competencyId: q.competency_id ? String(q.competency_id) : '',
+    subCompetencyId: q.sub_competency_id ? String(q.sub_competency_id) : '',
     indicatorId: q.indicator_id ? String(q.indicator_id) : '',
     questionText: q.question_text,
     useStimulus: Boolean(q.text),
@@ -153,7 +156,9 @@ export const formToBody = (f: QuestionForm): QuestionBody => {
     text: f.useStimulus ? f.stimulus : '',
     text_image: '',
     competency_id: f.competencyId ? Number(f.competencyId) : null,
-    indicator_id: f.competencyId && f.indicatorId ? Number(f.indicatorId) : null,
+    sub_competency_id: f.competencyId && f.subCompetencyId ? Number(f.subCompetencyId) : null,
+    indicator_id:
+      f.competencyId && f.subCompetencyId && f.indicatorId ? Number(f.indicatorId) : null,
     category_id: Number(f.categoryId) || 1,
     options,
     attachments: f.image ? [{ type: 'image', path: f.image }] : [],

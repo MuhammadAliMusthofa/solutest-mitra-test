@@ -17,13 +17,6 @@ import { ROLES } from 'src/config/roles';
 
 import { loadDb, nextId, resetDb, mutateDb, packageCode } from '../db';
 import {
-  MOCK_CLASSES,
-  MOCK_SUBJECTS,
-  MOCK_INDICATORS,
-  MOCK_CATEGORIES,
-  MOCK_COMPETENCIES,
-} from '../seed';
-import {
   fail,
   matches,
   paginate,
@@ -32,6 +25,14 @@ import {
   PANEL_ROLES,
   scheduleStatus,
 } from '../utils';
+import {
+  MOCK_CLASSES,
+  MOCK_SUBJECTS,
+  MOCK_INDICATORS,
+  MOCK_CATEGORIES,
+  MOCK_COMPETENCIES,
+  MOCK_SUB_COMPETENCIES,
+} from '../seed';
 
 // ------------------------------------------------------------------ master
 export const listClasses = () => MOCK_CLASSES;
@@ -44,9 +45,13 @@ export const listCompetencies = ({ query }: MockContext) =>
       (!query.subject_id || c.subject_id === Number(query.subject_id))
   );
 
+export const listSubCompetencies = ({ query }: MockContext) =>
+  MOCK_SUB_COMPETENCIES.filter(
+    (s) => !query.competency_id || s.competency_id === Number(query.competency_id)
+  );
 export const listIndicators = ({ query }: MockContext) =>
   MOCK_INDICATORS.filter(
-    (i) => !query.competency_id || i.competency_id === Number(query.competency_id)
+    (i) => !query.sub_competency_id || i.sub_competency_id === Number(query.sub_competency_id)
   );
 
 // ------------------------------------------------------------------ paket
@@ -193,9 +198,12 @@ const buildQuestion = (id: number, body: QuestionBody, previous?: Question): Que
   const category =
     MOCK_CATEGORIES.find((c) => c.id === Number(body.category_id)) ?? MOCK_CATEGORIES[0];
   const competency = MOCK_COMPETENCIES.find((c) => c.id === Number(body.competency_id));
-  // indikator hanya berlaku bila milik kompetensi terpilih
+  // jenjang harus konsisten: sub kompetensi milik kompetensi, indikator milik sub kompetensi
+  const subCompetency = MOCK_SUB_COMPETENCIES.find(
+    (s) => s.id === Number(body.sub_competency_id) && s.competency_id === competency?.id
+  );
   const indicator = MOCK_INDICATORS.find(
-    (i) => i.id === Number(body.indicator_id) && i.competency_id === competency?.id
+    (i) => i.id === Number(body.indicator_id) && i.sub_competency_id === subCompetency?.id
   );
   return {
     id,
@@ -207,6 +215,8 @@ const buildQuestion = (id: number, body: QuestionBody, previous?: Question): Que
     text_image: body.text_image ?? '',
     competency_id: competency?.id ?? null,
     competency_name: competency?.name ?? null,
+    sub_competency_id: subCompetency?.id ?? null,
+    sub_competency_name: subCompetency?.name ?? null,
     indicator_id: indicator?.id ?? null,
     indicator_name: indicator?.name ?? null,
     category_id: category.id,

@@ -114,7 +114,8 @@ sebelumnya `> 2` naik, `< −2` turun, selain itu stabil, `< 2` tryout `kurang-d
 | --- | --- | --- |
 | GET | `/master/classes` · `/master/subjects` · `/master/categories` | → `{ id, name }[]` |
 | GET | `/master/competencies` | `class_id, subject_id` (kelas & mapel paket) → `CompetencyOption[]` (`id, code, name, class_id, subject_id, order`) |
-| GET | `/master/indicators` | `competency_id` → `IndicatorOption[]` (`id, code, name, competency_id, order`) |
+| GET | `/master/sub-competencies` | `competency_id` → `SubCompetencyOption[]` (`id, code, name, competency_id, order`) |
+| GET | `/master/indicators` | `sub_competency_id` → `IndicatorOption[]` (`id, code, name, sub_competency_id, order`) |
 | GET | `/packages` | `search, subject_id, page, per_page` → paginasi `Package` |
 | GET | `/packages/options` | → `PackageOption[]` (paket berisi soal, untuk jadwal) |
 | POST | `/packages` | `PackageBody` → `Package` (`code` dibuat backend, unik) |
@@ -133,9 +134,10 @@ Tipe soal hanya 4: `1` PG, `2` PG Kompleks, `3` Benar/Salah, `4` Benar/Salah Kom
 manual (tanpa generate); gambar soal dikirim di `attachments` (`type: image`). Validasi: teks soal atau gambar
 wajib; PG/Benar-Salah tepat 1 kunci; PG Kompleks ≥ 1 kunci; B/S Kompleks ≥ 2 pernyataan, tiap opsi = satu
 baris tabel dengan `is_true` = kunci Benar (`false` = Salah), urut `order`.
-Paket hanya menyimpan `title, class_id, subject_id` (tanpa bab). Tiap soal menyimpan `competency_id` &
-`indicator_id` (opsional, indikator harus milik kompetensi); respons `Question` menyertakan
-`competency_name` & `indicator_name`.
+Paket hanya menyimpan `title, class_id, subject_id` (tanpa bab). Tiap soal menyimpan `competency_id`,
+`sub_competency_id` & `indicator_id` (opsional, berjenjang: kompetensi → sub kompetensi → indikator;
+sub kompetensi harus milik kompetensi, indikator milik sub kompetensi); respons `Question` menyertakan
+`competency_name`, `sub_competency_name` & `indicator_name`.
 
 ## 7. Anggota mitra 🔒 (admin)
 

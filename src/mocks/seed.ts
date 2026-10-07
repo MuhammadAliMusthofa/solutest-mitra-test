@@ -1,4 +1,4 @@
-// Master data & soal contoh simulasi (kelas, mapel, kompetensi, indikator, kategori) untuk paket soal.
+// Master data & soal contoh simulasi (kelas, mapel, kompetensi, sub kompetensi, indikator, kategori) untuk paket soal.
 
 import type {
   Question,
@@ -6,6 +6,7 @@ import type {
   QuestionOption,
   IndicatorOption,
   CompetencyOption,
+  SubCompetencyOption,
 } from 'src/models/question';
 
 export const MOCK_CLASSES = [
@@ -28,59 +29,117 @@ export const MOCK_CATEGORIES = [
   { id: 5, name: 'AKM' },
 ];
 
-/** Kompetensi per mapel; tiap kompetensi punya beberapa indikator. */
-const COMPETENCY_TREE: Record<number, { name: string; indicators: string[] }[]> = {
+/** Kompetensi per mapel → sub kompetensi → indikator. */
+type Tree = Record<number, { name: string; subs: { name: string; indicators: string[] }[] }[]>;
+
+const COMPETENCY_TREE: Tree = {
   8: [
     {
       name: 'Bilangan & Eksponen',
-      indicators: [
-        'Menyederhanakan bentuk pangkat dan akar',
-        'Menyelesaikan masalah kontekstual eksponen',
+      subs: [
+        {
+          name: 'Bentuk pangkat dan akar',
+          indicators: ['Menyederhanakan bentuk pangkat', 'Merasionalkan penyebut bentuk akar'],
+        },
+        {
+          name: 'Fungsi eksponen',
+          indicators: ['Menyelesaikan masalah kontekstual eksponen'],
+        },
       ],
     },
     {
       name: 'Aljabar: Persamaan dan Fungsi',
-      indicators: [
-        'Menentukan penyelesaian persamaan linear dan kuadrat',
-        'Menganalisis grafik fungsi',
-        'Menyusun model fungsi dari masalah sehari-hari',
+      subs: [
+        {
+          name: 'Persamaan linear dan kuadrat',
+          indicators: [
+            'Menentukan penyelesaian persamaan linear',
+            'Menentukan akar persamaan kuadrat',
+          ],
+        },
+        {
+          name: 'Fungsi dan grafiknya',
+          indicators: [
+            'Menganalisis grafik fungsi',
+            'Menyusun model fungsi dari masalah sehari-hari',
+          ],
+        },
       ],
     },
     {
       name: 'Geometri dan Pengukuran',
-      indicators: ['Menghitung luas dan volume bangun', 'Menerapkan teorema Pythagoras'],
+      subs: [
+        {
+          name: 'Bangun ruang',
+          indicators: ['Menghitung luas permukaan bangun ruang', 'Menghitung volume bangun ruang'],
+        },
+        { name: 'Segitiga siku-siku', indicators: ['Menerapkan teorema Pythagoras'] },
+      ],
     },
     {
       name: 'Data dan Peluang',
-      indicators: ['Menafsirkan penyajian data', 'Menentukan peluang suatu kejadian'],
+      subs: [
+        {
+          name: 'Statistika',
+          indicators: ['Menafsirkan penyajian data', 'Menentukan ukuran pemusatan data'],
+        },
+        { name: 'Peluang', indicators: ['Menentukan peluang suatu kejadian'] },
+      ],
     },
   ],
   5: [
     {
       name: 'Memahami Teks Eksposisi',
-      indicators: ['Menentukan gagasan utama paragraf', 'Mengidentifikasi struktur teks'],
+      subs: [
+        { name: 'Isi teks', indicators: ['Menentukan gagasan utama paragraf'] },
+        {
+          name: 'Struktur teks',
+          indicators: ['Mengidentifikasi tesis', 'Mengidentifikasi penegasan ulang'],
+        },
+      ],
     },
     {
       name: 'Menilai Teks Argumentasi',
-      indicators: ['Membedakan fakta dan opini', 'Menilai kekuatan argumen penulis'],
+      subs: [
+        { name: 'Fakta dan opini', indicators: ['Membedakan fakta dan opini'] },
+        {
+          name: 'Kualitas argumen',
+          indicators: ['Menilai kekuatan argumen penulis', 'Menilai relevansi bukti'],
+        },
+      ],
     },
     {
       name: 'Kebahasaan dan Ejaan',
-      indicators: ['Menggunakan ejaan dan tanda baca yang tepat', 'Memilih kata baku'],
+      subs: [
+        { name: 'Ejaan', indicators: ['Menggunakan ejaan dan tanda baca yang tepat'] },
+        { name: 'Diksi', indicators: ['Memilih kata baku', 'Memilih kata bermakna tepat'] },
+      ],
     },
   ],
   4: [
     {
       name: 'Reading Comprehension',
-      indicators: ['Identifying the main idea', 'Finding detailed information'],
+      subs: [
+        { name: 'Main idea', indicators: ['Identifying the main idea of a paragraph'] },
+        {
+          name: 'Specific information',
+          indicators: ['Finding detailed information', 'Making inferences from the text'],
+        },
+      ],
     },
     {
       name: 'Grammar in Context',
-      indicators: ['Using tenses correctly', 'Using conjunctions and connectors'],
+      subs: [
+        { name: 'Tenses', indicators: ['Using present and past tenses correctly'] },
+        { name: 'Connectors', indicators: ['Using conjunctions and connectors'] },
+      ],
     },
     {
       name: 'Vocabulary',
-      indicators: ['Determining word meaning from context', 'Using synonyms and antonyms'],
+      subs: [
+        { name: 'Word meaning', indicators: ['Determining word meaning from context'] },
+        { name: 'Word relations', indicators: ['Using synonyms and antonyms'] },
+      ],
     },
   ],
 };
@@ -98,15 +157,28 @@ export const MOCK_COMPETENCIES: CompetencyOption[] = MOCK_CLASSES.flatMap((cls) 
   )
 );
 
-export const MOCK_INDICATORS: IndicatorOption[] = MOCK_COMPETENCIES.flatMap((comp) =>
-  COMPETENCY_TREE[comp.subject_id][comp.order - 1].indicators.map((name, i) => ({
+const subsOf = (comp: CompetencyOption) => COMPETENCY_TREE[comp.subject_id][comp.order - 1].subs;
+
+export const MOCK_SUB_COMPETENCIES: SubCompetencyOption[] = MOCK_COMPETENCIES.flatMap((comp) =>
+  subsOf(comp).map((s, i) => ({
     id: comp.id * 10 + i + 1,
     code: `${comp.code}.${i + 1}`,
-    name,
+    name: s.name,
     competency_id: comp.id,
     order: i + 1,
   }))
 );
+
+export const MOCK_INDICATORS: IndicatorOption[] = MOCK_SUB_COMPETENCIES.flatMap((sub) => {
+  const comp = MOCK_COMPETENCIES.find((c) => c.id === sub.competency_id)!;
+  return subsOf(comp)[sub.order - 1].indicators.map((name, i) => ({
+    id: sub.id * 10 + i + 1,
+    code: `${sub.code}.${i + 1}`,
+    name,
+    sub_competency_id: sub.id,
+    order: i + 1,
+  }));
+});
 
 const opt = (
   id: number,
@@ -126,8 +198,10 @@ export const buildBankQuestion = (
 ): Question => {
   const subject = MOCK_SUBJECTS.find((s) => s.id === competency.subject_id)?.name ?? 'Mapel';
   const category = MOCK_CATEGORIES.find((c) => c.id === categoryId) ?? MOCK_CATEGORIES[0];
-  const indicators = MOCK_INDICATORS.filter((ind) => ind.competency_id === competency.id);
-  const indicator = indicators[id % indicators.length] ?? null;
+  const subs = MOCK_SUB_COMPETENCIES.filter((s) => s.competency_id === competency.id);
+  const subCompetency = subs[id % subs.length] ?? null;
+  const indicators = MOCK_INDICATORS.filter((i) => i.sub_competency_id === subCompetency?.id);
+  const indicator = indicators[id % Math.max(indicators.length, 1)] ?? null;
   const n = id % 97;
   const now = new Date().toISOString();
   const base = {
@@ -141,6 +215,8 @@ export const buildBankQuestion = (
     type_question_id: type,
     competency_id: competency.id,
     competency_name: competency.name,
+    sub_competency_id: subCompetency?.id ?? null,
+    sub_competency_name: subCompetency?.name ?? null,
     indicator_id: indicator?.id ?? null,
     indicator_name: indicator?.name ?? null,
     attachments: [],

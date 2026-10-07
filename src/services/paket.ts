@@ -14,6 +14,7 @@ import type {
   CategoryOption,
   IndicatorOption,
   CompetencyOption,
+  SubCompetencyOption,
   DeleteQuestionsBody,
 } from 'src/models/question';
 
@@ -25,7 +26,9 @@ export const masterService = {
   categories: () => api.get<CategoryOption[]>('/master/categories'),
   competencies: (p: { class_id?: number; subject_id?: number }) =>
     api.get<CompetencyOption[]>('/master/competencies', p),
-  indicators: (p: { competency_id?: number }) =>
+  subCompetencies: (p: { competency_id?: number }) =>
+    api.get<SubCompetencyOption[]>('/master/sub-competencies', p),
+  indicators: (p: { sub_competency_id?: number }) =>
     api.get<IndicatorOption[]>('/master/indicators', p),
 };
 
