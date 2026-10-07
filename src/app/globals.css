@@ -1,0 +1,231 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Design token. Nilai di :root adalah tema bawaan (warna logo Solutest, gaya Spike Admin).
+ * Warna bertanda [tema] ditimpa per mitra oleh ThemeSync (src/components/providers/theme-sync.tsx)
+ * dari Pengaturan Mitra → Tema. Komponen hanya memakai token (bg-primary, text-muted-foreground, …),
+ * tidak boleh hex langsung, agar ganti tema berlaku ke seluruh aplikasi.
+ */
+:root {
+  /* [tema] */
+  --primary: #3f479e;
+  --primary-foreground: #ffffff;
+  --secondary: #8a68ac;
+  --secondary-foreground: #ffffff;
+  --brand-accent: #b3c966;
+  --brand-accent-foreground: #1f2a07;
+  --page: #f3f2fa;
+  --success: #1a8a55;
+  --warning: #b5650c;
+  --destructive: #c4472a;
+  --radius: 12px;
+
+  /* turunan & netral */
+  --background: #ffffff;
+  --foreground: #111c2d;
+  --card: #ffffff;
+  --card-foreground: #111c2d;
+  --popover: #ffffff;
+  --popover-foreground: #111c2d;
+  --muted: #f4f5f8;
+  --muted-foreground: #5f6b74;
+  --accent: color-mix(in oklab, var(--primary) 8%, white);
+  --accent-foreground: color-mix(in oklab, var(--primary) 80%, black);
+  --info: #12819d;
+  --border: #e6ecf1;
+  --input: #dfe5ef;
+  --ring: var(--primary);
+  /* palet kategorikal tervalidasi (dataviz validate_palette: CVD ΔE ≥ 8, band L 0.43–0.77) */
+  --chart-1: var(--primary);
+  --chart-2: #e06a4c;
+  --chart-3: var(--secondary);
+  --chart-4: #c98a16;
+  --chart-5: #1a8a55;
+  --shadow-card: 0 2px 6px color-mix(in srgb, var(--primary) 10%, transparent);
+  --shadow-card-hover: 0 10px 28px -6px color-mix(in srgb, var(--primary) 18%, transparent);
+
+  /* sidebar — gaya "light" (bawaan); "brand" & "dark" diatur lewat [data-sidebar] */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #111c2d;
+  --sidebar-muted: #5f6b74;
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: color-mix(in oklab, var(--primary) 9%, white);
+  --sidebar-accent-foreground: var(--primary);
+  --sidebar-border: #e6ecf1;
+  --sidebar-ring: var(--primary);
+}
+
+[data-sidebar-style='brand'] {
+  --sidebar: var(--primary);
+  --sidebar-foreground: var(--primary-foreground);
+  --sidebar-muted: color-mix(in oklab, var(--primary-foreground) 72%, var(--primary));
+  --sidebar-accent: color-mix(in oklab, var(--primary-foreground) 16%, var(--primary));
+  --sidebar-accent-foreground: var(--primary-foreground);
+  --sidebar-border: color-mix(in oklab, var(--primary-foreground) 18%, var(--primary));
+}
+
+[data-sidebar-style='dark'] {
+  --sidebar: #161c2c;
+  --sidebar-foreground: #eef1f6;
+  --sidebar-muted: #a3acbb;
+  --sidebar-accent: #252d42;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #283147;
+}
+
+@theme inline {
+  --font-sans: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-page: var(--page);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-brand-accent: var(--brand-accent);
+  --color-brand-accent-foreground: var(--brand-accent-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.25);
+  --radius-2xl: calc(var(--radius) * 1.5);
+  --radius-3xl: calc(var(--radius) * 2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+  /* card Spike: radius 18 pada tema standar */
+  --radius-card: calc(var(--radius) * 1.5);
+
+  --shadow-card: var(--shadow-card);
+  --shadow-card-hover: var(--shadow-card-hover);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply bg-page text-foreground antialiased;
+  }
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-heading tracking-tight text-balance;
+  }
+}
+
+@layer components {
+  /* Konten HTML soal/pembahasan dari editor (hasil sanitasi). */
+  .rich-content {
+    @apply text-[0.95em] leading-relaxed break-words;
+  }
+  .rich-content p {
+    @apply my-1.5;
+  }
+  .rich-content ul {
+    @apply my-2 list-disc pl-6;
+  }
+  .rich-content ol {
+    @apply my-2 list-decimal pl-6;
+  }
+  .rich-content img {
+    @apply my-2 h-auto max-w-full rounded-lg;
+  }
+  .rich-content table {
+    @apply my-2 w-full border-collapse text-sm;
+  }
+  .rich-content td,
+  .rich-content th {
+    @apply border border-border px-2 py-1;
+  }
+  .rich-content blockquote {
+    @apply my-2 border-l-4 border-primary/30 pl-3 text-muted-foreground;
+  }
+
+  .tiptap:focus {
+    outline: none;
+  }
+  .tiptap p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    pointer-events: none;
+    color: var(--muted-foreground);
+  }
+}
+
+@layer utilities {
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  /* Hover angkat untuk card yang bisa diklik (dimatikan bila reduced motion). */
+  .lift {
+    transition:
+      transform 200ms cubic-bezier(0.16, 1, 0.3, 1),
+      box-shadow 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .lift:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-card-hover);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .lift,
+    .lift:hover {
+      transition: none;
+      transform: none;
+    }
+  }
+  /* Halaman ujian: cegah seleksi teks (salin soal). */
+  .no-select {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+}
