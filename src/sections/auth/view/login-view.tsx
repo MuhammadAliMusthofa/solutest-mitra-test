@@ -2,9 +2,6 @@
 
 /* eslint-disable @next/next/no-img-element -- logo mitra bisa berupa data URL / domain apa saja */
 
-import type { LoginBody } from 'src/models/auth';
-
-import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 import { SOLUTEST_LOGO } from 'src/config/theme';
@@ -17,20 +14,19 @@ import { Iconify } from 'src/components/iconify/iconify';
 
 import { useLogin } from '../hooks/use-login';
 import { LoginForm } from '../components/login-form';
-import { DemoAccounts } from '../components/demo-accounts';
 
 const HIGHLIGHTS = [
   { icon: 'solar:pen-new-square-linear', text: 'Tryout terjadwal dengan deteksi kecurangan' },
-  { icon: 'solar:chart-square-linear', text: 'Analitik sekolah, siswa, dan butir soal' },
-  { icon: 'solar:graph-up-linear', text: 'Progres nilai dari tryout ke tryout' },
+  { icon: 'solar:users-group-rounded-linear', text: 'Siswa & guru per sekolah dalam satu lembaga' },
+  { icon: 'solar:chart-square-linear', text: 'Hasil & predikat siswa langsung setelah tryout' },
 ];
 
 export function LoginView() {
   const params = useSearchParams();
   const { branding } = useTenant();
-  const [preset, setPreset] = useState<LoginBody | null>(null);
   const login = useLogin(params.get('next'));
   const expired = params.get('expired') === '1';
+  const disabled = params.get('disabled') === '1';
 
   return (
     <div className="grid min-h-dvh lg:grid-cols-[1.05fr_1fr]">
@@ -95,6 +91,12 @@ export function LoginView() {
             </p>
           </div>
 
+          {disabled && (
+            <div className="flex items-start gap-2 rounded-lg bg-destructive/8 px-3 py-2.5 text-sm text-destructive">
+              <Iconify icon="solar:user-block-linear" size={18} className="mt-0.5" />
+              Akun Anda dinonaktifkan oleh admin. Hubungi admin lembaga Anda.
+            </div>
+          )}
           {expired && (
             <div className="flex items-start gap-2 rounded-lg bg-warning/10 px-3 py-2.5 text-sm text-warning">
               <Iconify icon="solar:clock-circle-linear" size={18} className="mt-0.5" />
@@ -103,18 +105,14 @@ export function LoginView() {
           )}
 
           <LoginForm
-            preset={preset}
             loading={login.isPending}
             error={login.isError ? errorMessage(login.error) : null}
             onSubmit={(body) => login.mutate(body)}
           />
 
-          <DemoAccounts
-            onPick={(body) => {
-              setPreset(body);
-              login.mutate(body);
-            }}
-          />
+          <p className="text-center text-xs text-muted-foreground">
+            Masuk dengan akun Solutest yang didaftarkan oleh {branding.short_name || branding.name}.
+          </p>
         </div>
       </section>
     </div>

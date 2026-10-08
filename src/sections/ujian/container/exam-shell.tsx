@@ -11,10 +11,13 @@ import { Button } from 'src/components/ui/button';
 
 import { SISWA_PATHS } from 'src/config/paths';
 
+import { errorMessage } from 'src/core/http';
+
 import { useExamHydration, useExamAnswerStore, useExamSessionStore } from 'src/state/exam-store';
 
 import { practiceService } from 'src/services/student';
 
+import { Iconify } from 'src/components/iconify/iconify';
 import { ErrorState } from 'src/components/feedback/error-state';
 import { PageLoader } from 'src/components/feedback/page-loader';
 import { ConfirmDialog } from 'src/components/feedback/confirm-dialog';
@@ -24,13 +27,19 @@ import { useCountdown } from '../hooks/use-exam-timers';
 import { enterFullscreen } from '../hooks/use-exam-flow';
 import { useCheatDetection } from '../hooks/use-cheat-detection';
 import { useExamNavigation } from '../hooks/use-exam-navigation';
-import { useAutoSave, useSubmitExam, reportViolation } from '../hooks/use-exam-actions';
 import {
   decodeNumber,
   computeDeadline,
   flattenQuestions,
   normalizeSavedAnswers,
 } from '../helpers/exam';
+import {
+  useAutoSave,
+  finishedPath,
+  useSubmitExam,
+  reportViolation,
+  isAlreadyFinished,
+} from '../hooks/use-exam-actions';
 
 const PERIODIC_SAVE_MS = 60_000;
 
@@ -49,7 +58,10 @@ function useEnsureSession(practiceId: number, hydrated: boolean) {
     queryKey: ['exam', 'resume', practiceId],
     queryFn: async () => {
       const data = await practiceService.resume(practiceId);
-      return { ...data, deadline: computeDeadline(data.start_time, data.duration, data.end_time) };
+      return {
+        ...data,
+        deadline: data.deadline || computeDeadline(data.start_time, data.duration, data.end_time),
+      };
     },
     enabled: needsSession,
     retry: 1,
@@ -136,6 +148,7 @@ export function ExamShell({ children }: { children: ReactNode }) {
     enabled: Boolean(session) && !expired && !submit.isPending && !kickedOut,
     isCheatDetectionActive: session?.is_cheat_detection ?? false,
     maxViolations: session?.max_violations ?? 3,
+    initialCount: session?.current_violations ?? 0,
     onViolation: reportViolation,
     onResetAnswers: clearAnswers,
     onSubmitAnswers: () => {
@@ -146,6 +159,21 @@ export function ExamShell({ children }: { children: ReactNode }) {
 
   if (!hydrated || (!session && resume.isFetching))
     return <PageLoader fullscreen label="Menyiapkan soal…" />;
+
+  if (!session && resume.isError && isAlreadyFinished(resume.error)) {
+    return (
+      <div className="grid min-h-dvh place-items-center bg-page p-6">
+        <div className="w-full max-w-md space-y-4 rounded-card bg-card p-6 text-center shadow-card">
+          <Iconify icon="solar:check-circle-linear" size={48} className="mx-auto text-success" />
+          <p className="font-semibold">Tryout ini sudah dikumpulkan</p>
+          <p className="text-sm text-muted-foreground">{errorMessage(resume.error)}</p>
+          <Button className="w-full" asChild>
+            <Link href={finishedPath(practiceId)}>Lihat hasil</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (!session) {
     return (

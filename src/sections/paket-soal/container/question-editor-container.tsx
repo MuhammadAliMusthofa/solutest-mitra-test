@@ -35,7 +35,7 @@ const TYPE_ICONS: Record<QuestionType, string> = {
   1: 'solar:list-check-linear',
   2: 'solar:checklist-minimalistic-linear',
   3: 'solar:check-square-linear',
-  4: 'solar:checklist-linear',
+  9: 'solar:checklist-linear',
 };
 
 /** Buat / ubah satu soal dalam paket. `questionId` kosong = soal baru. */
@@ -53,13 +53,13 @@ export function QuestionEditorContainer() {
   const { saveQuestion } = usePaketMutations();
   const [form, setForm] = useState<QuestionForm>(emptyForm);
   const [error, setError] = useState('');
-  // kompetensi mengikuti kelas & mapel paket → sub kompetensi → indikator (berjenjang)
+  // kompetensi mengikuti kelas & mapel paket → sub kompetensi (berjenjang)
   const master = useMasterData({
-    class_id: paket.data?.class_id,
-    subject_id: paket.data?.subject_id,
+    class_id: paket.data?.class_id ?? undefined,
+    subject_id: paket.data?.subject_id ?? undefined,
     competency_id: Number(form.competencyId) || undefined,
-    sub_competency_id: Number(form.subCompetencyId) || undefined,
   });
+  const locked = paket.data ? !paket.data.is_editable : false;
   const update = (patch: Partial<QuestionForm>) => setForm((f) => ({ ...f, ...patch }));
 
   // isi form saat data soal (mode ubah) selesai dimuat
@@ -83,10 +83,8 @@ export function QuestionEditorContainer() {
             setForm({
               ...emptyForm(),
               type: form.type,
-              categoryId: form.categoryId,
               competencyId: form.competencyId,
               subCompetencyId: form.subCompetencyId,
-              indicatorId: form.indicatorId,
             });
             window.scrollTo({ top: 0, behavior: 'smooth' });
           } else router.push(back);
@@ -211,52 +209,57 @@ export function QuestionEditorContainer() {
           <SectionCard title="Pengaturan" className="xl:sticky xl:top-28">
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="q-category">Kategori</Label>
-                <SelectField
-                  id="q-category"
-                  value={form.categoryId}
-                  onChange={(categoryId) => update({ categoryId })}
-                  options={(master.categories.data ?? []).map((c) => ({
-                    value: String(c.id),
-                    label: c.name,
-                  }))}
-                  className="sm:w-full"
-                />
-              </div>
-              <div className="space-y-2">
                 <Label htmlFor="q-competency">Kompetensi</Label>
                 <SelectField
                   id="q-competency"
                   value={form.competencyId}
-                  // ganti kompetensi → sub kompetensi & indikator lama tidak berlaku lagi
-                  onChange={(competencyId) =>
-                    update({ competencyId, subCompetencyId: '', indicatorId: '' })
-                  }
+                  // ganti kompetensi → sub kompetensi lama tidak berlaku lagi
+                  onChange={(competencyId) => update({ competencyId, subCompetencyId: '' })}
                   options={(master.competencies.data ?? []).map((c) => ({
                     value: String(c.id),
-                    label: `${c.code} · ${c.name}`,
+                    label: c.name,
                   }))}
-                  allLabel="Tanpa kompetensi"
+                  placeholder={master.competencies.isFetching ? 'Memuat…' : 'Pilih kompetensi'}
                   disabled={!paket.data}
                   className="sm:w-full"
                 />
-                {paket.data && (
-                  <p className="text-xs text-muted-foreground">
-                    Kelas {paket.data.class_name} · {paket.data.subject_name}
-                  </p>
-                )}
+                {paket.data &&
+                  (master.competencies.isSuccess && master.competencies.data.length === 0 ? (
+                    <p className="text-xs text-warning">
+                      Belum ada kompetensi TKA untuk {paket.data.class_name} ·{' '}
+                      {paket.data.subject_name} di master Solutest. Hubungi tim Solutest atau ubah
+                      kelas/mapel paket.
+                    </p>
+                  ) : master.competencies.isError ? (
+                    <p className="text-xs text-destructive">
+                      Gagal memuat kompetensi.{' '}
+                      <button
+                        type="button"
+                        className="underline"
+                        onClick={() => master.competencies.refetch()}
+                      >
+                        Coba lagi
+                      </button>
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Kompetensi TKA {paket.data.class_name} · {paket.data.subject_name}
+                    </p>
+                  ))}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="q-sub-competency">Sub kompetensi</Label>
                 <SelectField
                   id="q-sub-competency"
                   value={form.subCompetencyId}
-                  onChange={(subCompetencyId) => update({ subCompetencyId, indicatorId: '' })}
+                  onChange={(subCompetencyId) => update({ subCompetencyId })}
                   options={(master.subCompetencies.data ?? []).map((s) => ({
                     value: String(s.id),
-                    label: `${s.code} · ${s.name}`,
+                    label: s.name,
                   }))}
-                  allLabel="Tanpa sub kompetensi"
+                  placeholder={
+                    master.subCompetencies.isFetching ? 'Memuat…' : 'Pilih sub kompetensi'
+                  }
                   disabled={!form.competencyId}
                   className="sm:w-full"
                 />
@@ -266,26 +269,13 @@ export function QuestionEditorContainer() {
                   </p>
                 )}
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="q-indicator">Indikator</Label>
-                <SelectField
-                  id="q-indicator"
-                  value={form.indicatorId}
-                  onChange={(indicatorId) => update({ indicatorId })}
-                  options={(master.indicators.data ?? []).map((ind) => ({
-                    value: String(ind.id),
-                    label: `${ind.code} · ${ind.name}`,
-                  }))}
-                  allLabel="Tanpa indikator"
-                  disabled={!form.subCompetencyId}
-                  className="sm:w-full"
-                />
-                {!form.subCompetencyId && (
-                  <p className="text-xs text-muted-foreground">
-                    Pilih sub kompetensi dulu untuk menampilkan indikatornya.
-                  </p>
-                )}
-              </div>
+              {locked && (
+                <p className="flex items-start gap-2 rounded-lg bg-warning/10 px-3 py-2 text-sm text-warning">
+                  <Iconify icon="solar:lock-keyhole-linear" size={18} className="mt-0.5" />
+                  Paket sudah dikerjakan siswa sehingga soal terkunci. Duplikat paket untuk
+                  mengedit.
+                </p>
+              )}
               {error && (
                 <p
                   role="alert"
@@ -296,7 +286,7 @@ export function QuestionEditorContainer() {
                 </p>
               )}
               <div className="flex flex-col gap-2">
-                <Button onClick={() => submit(false)} disabled={saveQuestion.isPending}>
+                <Button onClick={() => submit(false)} disabled={saveQuestion.isPending || locked}>
                   {saveQuestion.isPending && <Iconify icon="svg-spinners:180-ring" size={16} />}
                   Simpan soal
                 </Button>
@@ -304,7 +294,7 @@ export function QuestionEditorContainer() {
                   <Button
                     variant="outline"
                     onClick={() => submit(true)}
-                    disabled={saveQuestion.isPending}
+                    disabled={saveQuestion.isPending || locked}
                   >
                     Simpan & tambah lagi
                   </Button>

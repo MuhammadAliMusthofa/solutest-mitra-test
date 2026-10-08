@@ -2,8 +2,8 @@ import type { Predicate } from 'src/models/analytics';
 import type { TrendStatus } from 'src/models/progress';
 
 import { formatScore, formatSigned } from 'src/utils/format';
-import { getPredicate, PREDICATE_LABEL } from 'src/utils/predicate';
 import { getDelta, TREND_LABEL, getTrendStatus } from 'src/utils/progress';
+import { getPredicate, PREDICATE_LABEL, normalizePredicate } from 'src/utils/predicate';
 
 import { StatusPill } from 'src/components/data-display/status-pill';
 import type { PillTone } from 'src/components/data-display/status-pill';
@@ -20,10 +20,11 @@ export function PredicateBadge({
   predicate,
   score,
 }: {
-  predicate?: Predicate | null;
+  /** kunci FE atau label backend ("Istimewa") */
+  predicate?: Predicate | string | null;
   score?: number;
 }) {
-  const value = predicate ?? (score !== undefined ? getPredicate(score) : null);
+  const value = normalizePredicate(predicate) ?? (score !== undefined ? getPredicate(score) : null);
   if (!value) return <span className="text-muted-foreground">-</span>;
   return <StatusPill tone={PREDICATE_TONE[value]}>{PREDICATE_LABEL[value]}</StatusPill>;
 }

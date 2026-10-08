@@ -151,7 +151,7 @@ export function TrueFalse({ q, index }: { q: ExamQuestion; index: number }) {
   );
 }
 
-/** 4 · Benar/Salah Kompleks (tabel) — [[pernyataanId, 1 (Benar) | 0 (Salah) | null], ...] */
+/** 9 · Benar/Salah Kompleks (tabel) — [[pernyataanId, 1 (Benar) | 0 (Salah) | null], ...] */
 export function TrueFalseComplex({ q, index }: { q: ExamQuestion; index: number }) {
   const { answer, set } = useAnswer(q, index);
   const statements = useMemo(() => [...q.options].sort((a, b) => a.order - b.order), [q.options]);
@@ -249,7 +249,7 @@ export function QuestionAnswerArea({ q, index }: { q: ExamQuestion; index: numbe
       return <MultipleChoiceComplex q={q} index={index} />;
     case 3:
       return <TrueFalse q={q} index={index} />;
-    case 4:
+    case 9:
       return <TrueFalseComplex q={q} index={index} />;
     default:
       return <p className="text-sm text-muted-foreground">Tipe soal belum didukung.</p>;

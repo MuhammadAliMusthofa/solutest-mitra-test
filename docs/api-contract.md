@@ -1,8 +1,11 @@
 # Kontrak API — be-solutest-mitra
 
-FE dibangun di atas kontrak ini. Selama backend belum siap, FE berjalan dengan `NEXT_PUBLIC_MOCK=true`;
-implementasi acuan (bentuk request/response & aturan validasi) ada di `src/mocks/handlers/*` dan
-tabel route `src/mocks/router.ts`. Tipe TypeScript: `src/models/*`.
+> **Status (Okt 2026): FE sudah memakai backend asli.** Acuan endpoint = `docs/be-api.md` +
+> artifact "Solutest for Mitra — Panduan Integrasi Frontend". Respons backend dipetakan ke model FE
+> di `src/services/*` (mis. `attempt_id` → `practice_id`, tipe soal 9 = B/S Kompleks, `paging` →
+> `pagination`, `size` ↔ `per_page`). Dokumen di bawah adalah kontrak **mock lama**; yang masih
+> dipakai hanya bagian **§4 Analitik & §5 Progres** (dijawab `src/mocks` saat `NEXT_PUBLIC_MOCK=true`,
+> belum ada di backend).
 
 ## 1. Konvensi
 

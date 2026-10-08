@@ -3,10 +3,8 @@
 import type { Package } from 'src/models/question';
 
 import Link from 'next/link';
-import { toast } from 'sonner';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useQueryClient } from '@tanstack/react-query';
 
 import { Button } from 'src/components/ui/button';
 import { Skeleton } from 'src/components/ui/skeleton';
@@ -17,14 +15,10 @@ import {
   DropdownMenuTrigger,
 } from 'src/components/ui/dropdown-menu';
 
-import { ENV } from 'src/config/env';
-
 import { usePanel } from 'src/hooks/use-panel';
 import { useUrlState } from 'src/hooks/use-url-state';
 
 import { formatShortDate } from 'src/utils/format';
-
-import { devService } from 'src/services/account';
 
 import { Iconify } from 'src/components/iconify/iconify';
 import { SearchInput } from 'src/components/form/search-input';
@@ -37,17 +31,18 @@ import { ConfirmDialog } from 'src/components/feedback/confirm-dialog';
 import { SectionCard } from 'src/components/data-display/section-card';
 import { TablePagination } from 'src/components/data-display/table-pagination';
 
+import { CatalogDialog } from '../components/catalog-dialog';
 import { PackageFormDialog } from '../components/package-form-dialog';
 import { usePackages, useMasterData, usePaketMutations } from '../hooks/use-paket';
 
 export function PaketListContainer() {
   const router = useRouter();
-  const qc = useQueryClient();
   const { paths } = usePanel();
-  const [f, setF] = useUrlState({ search: '', subject_id: '', page: '1' });
+  const [f, setF] = useUrlState({ search: '', subject_id: '', source: '', page: '1' });
   const query = usePackages({
     search: f.search,
     subject_id: f.subject_id,
+    source: (f.source || undefined) as Package['source'] | undefined,
     page: Number(f.page),
     per_page: 9,
   });
@@ -58,14 +53,7 @@ export function PaketListContainer() {
     initial: null,
   });
   const [toDelete, setToDelete] = useState<Package | null>(null);
-  const [confirmReset, setConfirmReset] = useState(false);
-
-  const resetSimulation = async () => {
-    await devService.resetMock();
-    qc.invalidateQueries();
-    setConfirmReset(false);
-    toast.success('Data simulasi dikembalikan ke kondisi awal');
-  };
+  const [catalogOpen, setCatalogOpen] = useState(false);
 
   return (
     <>
@@ -79,12 +67,10 @@ export function PaketListContainer() {
         ]}
         actions={
           <>
-            {ENV.mock && (
-              <Button variant="ghost" onClick={() => setConfirmReset(true)}>
-                <Iconify icon="solar:restart-linear" size={18} />
-                Reset data simulasi
-              </Button>
-            )}
+            <Button variant="outline" onClick={() => setCatalogOpen(true)}>
+              <Iconify icon="solar:import-linear" size={18} />
+              Ambil dari Solutest
+            </Button>
             <Button onClick={() => setForm({ open: true, initial: null })}>
               <Iconify icon="solar:add-circle-linear" size={18} />
               Buat paket
@@ -107,6 +93,16 @@ export function PaketListContainer() {
             options={(subjects.data ?? []).map((s) => ({ value: String(s.id), label: s.name }))}
             allLabel="Semua mapel"
           />
+          <SelectField
+            aria-label="Filter sumber paket"
+            value={f.source}
+            onChange={(source) => setF({ source })}
+            options={[
+              { value: 'MITRA', label: 'Buatan mitra' },
+              { value: 'SOLUTEST', label: 'Salinan Solutest' },
+            ]}
+            allLabel="Semua sumber"
+          />
         </div>
 
         {query.isPending && (
@@ -120,10 +116,15 @@ export function PaketListContainer() {
         {query.data?.data.length === 0 && (
           <EmptyState
             title="Belum ada paket soal"
-            description="Buat paket pertama lalu tambahkan soal."
+            description="Buat paket sendiri atau ambil paket yang dibagikan Solutest."
             icon="solar:box-linear"
             action={
-              <Button onClick={() => setForm({ open: true, initial: null })}>Buat paket</Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setCatalogOpen(true)}>
+                  Ambil dari Solutest
+                </Button>
+                <Button onClick={() => setForm({ open: true, initial: null })}>Buat paket</Button>
+              </div>
             }
           />
         )}
@@ -184,13 +185,20 @@ export function PaketListContainer() {
                 <h3 className="line-clamp-2 font-semibold">{p.title}</h3>
               </Link>
               <p className="mt-1 text-xs text-muted-foreground">
-                {p.subject_name} · Kelas {p.class_name}
+                {[p.subject_name, p.class_name && `Kelas ${p.class_name}`]
+                  .filter(Boolean)
+                  .join(' · ') || 'Kelas & mapel belum diatur'}
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <StatusPill tone="primary" icon="solar:hashtag-linear">
                   {p.code}
                 </StatusPill>
                 <StatusPill>{p.question_count} soal</StatusPill>
+                {p.source === 'SOLUTEST' && (
+                  <StatusPill tone="secondary" icon="solar:import-linear">
+                    Solutest
+                  </StatusPill>
+                )}
                 {p.schedule_count > 0 && (
                   <StatusPill tone="success" icon="solar:calendar-mark-linear">
                     Dipakai {p.schedule_count} jadwal
@@ -198,7 +206,7 @@ export function PaketListContainer() {
                 )}
               </div>
               <p className="mt-auto pt-4 text-xs text-muted-foreground">
-                Diperbarui {formatShortDate(p.updatedAt)} · oleh {p.created_by}
+                Diperbarui {formatShortDate(p.updatedAt)} · {p.time} menit
               </p>
             </article>
           ))}
@@ -230,14 +238,10 @@ export function PaketListContainer() {
           toDelete && removePackage.mutate(toDelete.id, { onSuccess: () => setToDelete(null) })
         }
       />
-      <ConfirmDialog
-        open={confirmReset}
-        onOpenChange={setConfirmReset}
-        tone="warning"
-        title="Reset data simulasi?"
-        description="Paket, jadwal, pengerjaan siswa, guru, dan pengaturan mitra simulasi di browser ini akan kembali ke kondisi awal."
-        confirmLabel="Reset"
-        onConfirm={resetSimulation}
+      <CatalogDialog
+        open={catalogOpen}
+        onOpenChange={setCatalogOpen}
+        onImported={(pkg) => router.push(paths.paketDetail(pkg.id))}
       />
     </>
   );

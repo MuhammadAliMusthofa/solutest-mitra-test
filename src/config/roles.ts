@@ -1,9 +1,9 @@
-// Role (klaim JWT `role`) dan prefix route masing-masing.
+// Role (klaim JWT `role` dari be-solutest-mitra) dan prefix route masing-masing.
 
 export const ROLES = {
-  admin: 'admin-mitra',
-  guru: 'guru-mitra',
-  siswa: 'siswa-mitra',
+  admin: 'ADMIN',
+  guru: 'GURU',
+  siswa: 'SISWA',
 } as const;
 
 export type Role = (typeof ROLES)[keyof typeof ROLES];

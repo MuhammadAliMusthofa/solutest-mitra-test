@@ -9,6 +9,7 @@ export const panelPaths = (panel: Panel) => {
   const base = `/${panel}`;
   return {
     root: base,
+    analytics: `${base}/analitik`,
     schoolRanking: `${base}/analitik/sekolah`,
     studentScores: `${base}/analitik/siswa`,
     practiceDetail: (practiceId: number | string) => `${base}/analitik/siswa/hasil/${practiceId}`,
@@ -23,8 +24,13 @@ export const panelPaths = (panel: Panel) => {
     questionEdit: (paketId: number | string, questionId: number | string) =>
       `${base}/paket-soal/${paketId}/soal/${questionId}`,
     jadwalTryout: `${base}/jadwal-tryout`,
+    hasilTryout: `${base}/hasil-tryout`,
+    hasilTryoutDetail: (scheduleId: number | string) => `${base}/hasil-tryout/${scheduleId}`,
+    attemptDetail: (attemptId: number | string) => `${base}/hasil-tryout/pengerjaan/${attemptId}`,
+    sekolah: `${base}/sekolah`,
     siswa: `${base}/siswa`,
     importSiswa: `${base}/siswa/import`,
+    studentHistory: (studentId: number | string) => `${base}/siswa/${studentId}`,
     guru: `${base}/guru`,
     pengaturan: `${base}/pengaturan`,
     profile: `${base}/profil`,

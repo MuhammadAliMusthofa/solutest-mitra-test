@@ -1,12 +1,13 @@
 'use client';
 
-import type { Package } from 'src/models/question';
+import type { Package, PackageBody } from 'src/models/question';
 
 import { useState } from 'react';
 
 import { Input } from 'src/components/ui/input';
 import { Label } from 'src/components/ui/label';
 import { Button } from 'src/components/ui/button';
+import { Switch } from 'src/components/ui/switch';
 import {
   Dialog,
   DialogTitle,
@@ -29,12 +30,20 @@ interface Props {
   onSaved?: (pkg: Package) => void;
 }
 
-/** Buat / ubah paket soal: judul, kelas, mapel. Kompetensi & indikator diisi per soal. */
+/**
+ * Buat / ubah paket soal: judul, kelas, mapel, durasi, dan aturan pengerjaan.
+ * Kompetensi diisi per soal; kelas & mapel terkunci setelah paket berisi soal.
+ */
 export function PackageFormDialog({ open, onOpenChange, initial, onSaved }: Props) {
   const [title, setTitle] = useState('');
   const [classId, setClassId] = useState('');
   const [subjectId, setSubjectId] = useState('');
+  const [time, setTime] = useState('60');
+  const [showScore, setShowScore] = useState(true);
+  const [cheat, setCheat] = useState(false);
+  const [maxViolations, setMaxViolations] = useState('3');
   const [submitted, setSubmitted] = useState(false);
+  const lockedMaster = Boolean(initial && initial.question_count > 0);
   const master = useMasterData();
   const { savePackage } = usePaketMutations();
 
@@ -43,8 +52,12 @@ export function PackageFormDialog({ open, onOpenChange, initial, onSaved }: Prop
     setPrevOpen(open);
     if (open) {
       setTitle(initial?.title ?? '');
-      setClassId(initial ? String(initial.class_id) : '');
-      setSubjectId(initial ? String(initial.subject_id) : '');
+      setClassId(initial?.class_id ? String(initial.class_id) : '');
+      setSubjectId(initial?.subject_id ? String(initial.subject_id) : '');
+      setTime(String(initial?.time ?? 60));
+      setShowScore(initial?.show_score ?? true);
+      setCheat(initial?.is_cheat_detection ?? false);
+      setMaxViolations(String(initial?.max_violations ?? 3));
       setSubmitted(false);
     }
   }
@@ -53,6 +66,11 @@ export function PackageFormDialog({ open, onOpenChange, initial, onSaved }: Prop
     title: !title.trim() ? 'Judul paket wajib diisi' : '',
     class: !classId ? 'Pilih kelas' : '',
     subject: !subjectId ? 'Pilih mata pelajaran' : '',
+    time: !(Number(time) >= 1 && Number(time) <= 1440) ? 'Durasi 1–1440 menit' : '',
+    violations:
+      cheat && !(Number(maxViolations) >= 1 && Number(maxViolations) <= 100)
+        ? 'Batas pelanggaran 1–100'
+        : '',
   };
   const invalid = Object.values(errors).some(Boolean);
 
@@ -63,10 +81,14 @@ export function PackageFormDialog({ open, onOpenChange, initial, onSaved }: Prop
       {
         id: initial?.id,
         body: {
-          title,
-          class_id: Number(classId),
-          subject_id: Number(subjectId),
-        },
+          title: title.trim(),
+          // kelas & mapel tidak dikirim bila terkunci (backend menolak perubahan → 409)
+          ...(lockedMaster ? {} : { class_id: Number(classId), subject_id: Number(subjectId) }),
+          time: Number(time),
+          show_score: showScore,
+          is_cheat_detection: cheat,
+          max_violations: Number(maxViolations),
+        } as PackageBody,
       },
       {
         onSuccess: (pkg) => {
@@ -79,7 +101,7 @@ export function PackageFormDialog({ open, onOpenChange, initial, onSaved }: Prop
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{initial ? 'Ubah paket soal' : 'Buat paket soal'}</DialogTitle>
           <DialogDescription>Kode paket dibuat otomatis setelah paket disimpan.</DialogDescription>
@@ -111,6 +133,7 @@ export function PackageFormDialog({ open, onOpenChange, initial, onSaved }: Prop
                 }))}
                 placeholder="Pilih kelas"
                 className="sm:w-full"
+                disabled={lockedMaster}
                 invalid={submitted && Boolean(errors.class)}
               />
             </div>
@@ -126,6 +149,7 @@ export function PackageFormDialog({ open, onOpenChange, initial, onSaved }: Prop
                 }))}
                 placeholder="Pilih mapel"
                 className="sm:w-full"
+                disabled={lockedMaster}
                 invalid={submitted && Boolean(errors.subject)}
               />
             </div>
@@ -133,22 +157,67 @@ export function PackageFormDialog({ open, onOpenChange, initial, onSaved }: Prop
           {submitted && (errors.class || errors.subject) && (
             <p className="text-xs text-destructive">{errors.class || errors.subject}</p>
           )}
-          {initial &&
-          initial.question_count > 0 &&
-          (classId !== String(initial.class_id) || subjectId !== String(initial.subject_id)) ? (
-            <p
-              role="alert"
-              className="flex items-start gap-2 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning"
-            >
-              <Iconify icon="solar:danger-triangle-linear" size={16} className="mt-px shrink-0" />
-              Kelas/mapel berubah: kompetensi & indikator pada {initial.question_count} soal yang
-              ada mungkin tidak lagi sesuai dan perlu diperiksa ulang.
-            </p>
-          ) : (
-            <p className="rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
-              Kompetensi & indikator dipilih per soal saat menambah soal, sesuai kelas & mapel
-              paket.
-            </p>
+          <p className="rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
+            {lockedMaster
+              ? `Kelas & mapel terkunci karena paket sudah berisi ${initial?.question_count} soal.`
+              : 'Kompetensi TKA dipilih per soal, sesuai kelas & mapel paket.'}
+          </p>
+          <div className="space-y-2">
+            <Label htmlFor="paket-time">Durasi bawaan (menit)</Label>
+            <Input
+              id="paket-time"
+              type="number"
+              min={1}
+              max={1440}
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+              className="w-40"
+              aria-invalid={submitted && Boolean(errors.time)}
+            />
+            {submitted && errors.time && <p className="text-xs text-destructive">{errors.time}</p>}
+          </div>
+          <label
+            htmlFor="paket-score"
+            className="flex items-center justify-between gap-3 rounded-lg bg-muted/50 px-4 py-3"
+          >
+            <span>
+              <span className="block text-sm font-medium">Tampilkan nilai ke siswa</span>
+              <span className="block text-xs text-muted-foreground">
+                Bila dimatikan, siswa tidak melihat skor & leaderboard.
+              </span>
+            </span>
+            <Switch id="paket-score" checked={showScore} onCheckedChange={setShowScore} />
+          </label>
+          <label
+            htmlFor="paket-cheat"
+            className="flex items-center justify-between gap-3 rounded-lg bg-muted/50 px-4 py-3"
+          >
+            <span>
+              <span className="block text-sm font-medium">Deteksi kecurangan</span>
+              <span className="block text-xs text-muted-foreground">
+                Pindah tab / keluar layar penuh dihitung pelanggaran; melewati batas = dikumpulkan
+                otomatis.
+              </span>
+            </span>
+            <Switch id="paket-cheat" checked={cheat} onCheckedChange={setCheat} />
+          </label>
+          {cheat && (
+            <div className="space-y-2">
+              <Label htmlFor="paket-violations">Batas pelanggaran</Label>
+              <Input
+                id="paket-violations"
+                type="number"
+                min={1}
+                max={100}
+                value={maxViolations}
+                onChange={(e) => setMaxViolations(e.target.value)}
+                className="w-40"
+                aria-invalid={submitted && Boolean(errors.violations)}
+              />
+              {submitted && errors.violations && (
+                <p className="text-xs text-destructive">{errors.violations}</p>
+              )}
+            </div>
           )}
         </div>
         <DialogFooter>

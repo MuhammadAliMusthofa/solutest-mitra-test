@@ -41,19 +41,19 @@ export function useExamFlow() {
   /** Isi store dari data sesi + jawaban tersimpan (opsional), lalu buka nomor 1. */
   const enter = useCallback(
     async (session: ExamSession) => {
+      // tenggat dari backend (sudah dikoreksi jam server); fallback hitung dari durasi
       const prepared = {
         ...session,
-        deadline: computeDeadline(session.start_time, session.duration, session.end_time),
+        deadline:
+          session.deadline ||
+          computeDeadline(session.start_time, session.duration, session.end_time),
       };
       setSession(prepared);
-      // Jawaban tersimpan adalah data pendukung: bila gagal dimuat, siswa tetap boleh lanjut
-      // (mulai tanpa jawaban tersimpan) — tidak diblokir (Issue #1 fe-solutest).
-      try {
-        const saved = await practiceService.savedAnswers(session.practice_id);
-        setAnswers(session.practice_id, normalizeSavedAnswers(saved, flattenQuestions(prepared)));
-      } catch {
-        setAnswers(session.practice_id, []);
-      }
+      // Draf jawaban ikut dalam sesi dari backend
+      setAnswers(
+        session.practice_id,
+        normalizeSavedAnswers(session.saved_answers ?? [], flattenQuestions(prepared))
+      );
       qc.invalidateQueries({ queryKey: ['student'] });
       router.push(SISWA_PATHS.exam(session.practice_id, encodeNumber(1)));
     },

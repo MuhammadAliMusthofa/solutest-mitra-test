@@ -13,6 +13,7 @@ import { Skeleton } from 'src/components/ui/skeleton';
 
 import { usePanel } from 'src/hooks/use-panel';
 
+import { cn } from 'src/lib/utils';
 import { formatShortDate } from 'src/utils/format';
 
 import { questionTypeName } from 'src/models/question';
@@ -39,6 +40,7 @@ export function PaketDetailContainer() {
   const [picked, setPicked] = useState<Set<number>>(() => new Set());
   const [confirmBulk, setConfirmBulk] = useState(false);
   const p = query.data;
+  const locked = p ? !p.is_editable : false;
 
   // hanya soal yang masih ada di paket yang dihitung terpilih
   const questionIds = (p?.questions ?? []).map((q) => q.id);
@@ -94,16 +96,29 @@ export function PaketDetailContainer() {
                 />
                 Salin paket
               </Button>
-              <Button asChild>
-                <Link href={paths.questionCreate(p.id)}>
-                  <Iconify icon="solar:add-circle-linear" size={18} />
-                  Tambah soal
-                </Link>
-              </Button>
+              {!locked && (
+                <Button asChild>
+                  <Link href={paths.questionCreate(p.id)}>
+                    <Iconify icon="solar:add-circle-linear" size={18} />
+                    Tambah soal
+                  </Link>
+                </Button>
+              )}
             </>
           )
         }
       />
+
+      {locked && (
+        <p
+          role="status"
+          className="mb-6 flex items-start gap-2 rounded-card bg-warning/10 px-4 py-3 text-sm text-warning"
+        >
+          <Iconify icon="solar:lock-keyhole-linear" size={18} className="mt-0.5 shrink-0" />
+          Paket ini sudah dikerjakan siswa sehingga soal terkunci agar nilai tetap konsisten. Klik
+          &quot;Salin paket&quot; untuk membuat versi baru yang bisa diedit.
+        </p>
+      )}
 
       {query.isPending && <Skeleton className="h-80 w-full rounded-card" />}
       {query.isError && (
@@ -134,9 +149,16 @@ export function PaketDetailContainer() {
             </div>
             <dl className="mt-4 space-y-2 text-sm">
               {[
-                ['Mapel', p.subject_name],
-                ['Kelas', p.class_name],
+                ['Mapel', p.subject_name ?? '—'],
+                ['Kelas', p.class_name ?? '—'],
+                ['Sumber', p.source === 'SOLUTEST' ? 'Salinan paket Solutest' : 'Buatan mitra'],
                 ['Jumlah soal', String(p.question_count)],
+                ['Durasi bawaan', `${p.time} menit`],
+                ['Tampilkan nilai', p.show_score ? 'Ya' : 'Tidak'],
+                [
+                  'Deteksi kecurangan',
+                  p.is_cheat_detection ? `Aktif (maks. ${p.max_violations} pelanggaran)` : 'Tidak',
+                ],
                 ['Dipakai jadwal', `${p.schedule_count}×`],
                 ['Diperbarui', formatShortDate(p.updatedAt)],
               ].map(([k, v]) => (
@@ -185,7 +207,7 @@ export function PaketDetailContainer() {
                 description="Tambahkan soal pertama: PG, PG Kompleks, Benar/Salah, atau Benar/Salah Kompleks."
                 icon="solar:document-add-linear"
                 action={
-                  <Button asChild>
+                  <Button asChild disabled={locked}>
                     <Link href={paths.questionCreate(p.id)}>
                       <Iconify icon="solar:add-circle-linear" size={18} />
                       Tambah soal
@@ -195,7 +217,12 @@ export function PaketDetailContainer() {
               />
             ) : (
               <>
-                <div className="sticky top-24 z-10 mb-4 flex flex-wrap items-center gap-3 rounded-xl bg-card px-4 py-2.5 ring-1 ring-border">
+                <div
+                  className={cn(
+                    'sticky top-24 z-10 mb-4 flex flex-wrap items-center gap-3 rounded-xl bg-card px-4 py-2.5 ring-1 ring-border',
+                    locked && 'hidden'
+                  )}
+                >
                   <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
                     <Checkbox
                       checked={allSelected}
@@ -226,6 +253,7 @@ export function PaketDetailContainer() {
                       onDelete={() => setToDelete({ q, no: i + 1 })}
                       selected={picked.has(q.id)}
                       onSelectedChange={(on) => toggle(q.id, on)}
+                      locked={locked}
                     />
                   ))}
                 </div>

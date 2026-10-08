@@ -61,28 +61,3 @@ export const paginate = <T>(
 
 export const matches = (value: string, search?: string) =>
   !search || value.toLowerCase().includes(String(search).toLowerCase());
-
-const toDate = (value: string) => new Date(value.includes('T') ? value : value.replace(' ', 'T'));
-
-export const scheduleStatus = (start: string, end: string, now = new Date()) => {
-  if (now < toDate(start)) return 'scheduled' as const;
-  if (now > toDate(end)) return 'finished' as const;
-  return 'ongoing' as const;
-};
-
-export const parseDate = toDate;
-
-const base64Url = (value: object) =>
-  btoa(unescape(encodeURIComponent(JSON.stringify(value))))
-    .replace(/=+$/, '')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_');
-
-/** JWT tanpa tanda tangan khusus mode mock — hanya untuk dibaca FE. */
-export const createMockToken = (
-  claims: Omit<TokenClaims, 'exp' | 'iat'>,
-  ttlSeconds = 8 * 3600
-) => {
-  const now = Math.floor(Date.now() / 1000);
-  return `${base64Url({ alg: 'none', typ: 'JWT' })}.${base64Url({ ...claims, iat: now, exp: now + ttlSeconds })}.mock`;
-};

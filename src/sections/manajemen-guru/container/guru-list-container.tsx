@@ -33,24 +33,35 @@ import { TeacherDialog } from '../components/teacher-dialog';
 export function GuruListContainer() {
   const qc = useQueryClient();
   const { paths } = usePanel();
-  const [f, setF] = useUrlState({ search: '', status: '', page: '1' });
-  const params = { search: f.search, status: f.status, page: Number(f.page), per_page: 10 };
+  const [f, setF] = useUrlState({ search: '', status: '', school_id: '', page: '1' });
+  const params = {
+    search: f.search,
+    status: f.status,
+    school_id: f.school_id,
+    page: Number(f.page),
+    per_page: 10,
+  };
   const query = useQuery({
-    queryKey: ['members', 'teachers', params],
+    queryKey: ['member', 'teachers', params],
     queryFn: () => memberService.teachers(params),
     placeholderData: keepPreviousData,
   });
+  const schools = useQuery({
+    queryKey: ['member', 'schools', 'options'],
+    queryFn: memberService.schools,
+  });
+  const quota = useQuery({ queryKey: ['member', 'quota'], queryFn: memberService.quota });
   const [dialog, setDialog] = useState<{ open: boolean; initial: MitraTeacher | null }>({
     open: false,
     initial: null,
   });
-  const [toDelete, setToDelete] = useState<MitraTeacher | null>(null);
-  const remove = useMutation({
-    mutationFn: (id: number) => memberService.removeTeacher(id),
-    onSuccess: () => {
-      toast.success('Akun guru dihapus');
-      setToDelete(null);
-      qc.invalidateQueries({ queryKey: ['members', 'teachers'] });
+  const [toToggle, setToToggle] = useState<MitraTeacher | null>(null);
+  const toggle = useMutation({
+    mutationFn: (t: MitraTeacher) => memberService.setTeacherActive(t.id, t.status !== 'active'),
+    onSuccess: (_, t) => {
+      toast.success(t.status === 'active' ? 'Guru dinonaktifkan' : 'Guru diaktifkan kembali');
+      setToToggle(null);
+      qc.invalidateQueries({ queryKey: ['member'] });
     },
     onError: (err) => toast.error(errorMessage(err)),
   });
@@ -69,20 +80,23 @@ export function GuruListContainer() {
         </div>
       ),
     },
-    { key: 'subject', header: 'Mapel', hideOnMobile: true, cell: (t) => t.subject ?? '-' },
     {
-      key: 'schools',
-      header: 'Sekolah diampu',
-      cell: (t) => (
-        <div className="flex max-w-md flex-wrap gap-1">
-          {t.schools.slice(0, 2).map((s) => (
-            <StatusPill key={s.id}>{s.name}</StatusPill>
-          ))}
-          {t.schools.length > 2 && (
-            <StatusPill tone="primary">+{t.schools.length - 2} lainnya</StatusPill>
-          )}
-        </div>
-      ),
+      key: 'phone',
+      header: 'No. HP',
+      hideOnMobile: true,
+      cell: (t) => <span className="text-xs">{t.phone ?? '-'}</span>,
+    },
+    {
+      key: 'school',
+      header: 'Sekolah',
+      cell: (t) =>
+        t.school_name ? (
+          <StatusPill>{t.school_name}</StatusPill>
+        ) : (
+          <StatusPill tone="warning" icon="solar:danger-triangle-linear">
+            Belum diatur
+          </StatusPill>
+        ),
     },
     {
       key: 'status',
@@ -102,7 +116,7 @@ export function GuruListContainer() {
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label={`Ubah ${t.name}`}
+            aria-label={`Ubah sekolah ${t.name}`}
             onClick={() => setDialog({ open: true, initial: t })}
           >
             <Iconify icon="solar:pen-linear" size={17} />
@@ -110,11 +124,14 @@ export function GuruListContainer() {
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label={`Hapus ${t.name}`}
-            onClick={() => setToDelete(t)}
-            className="hover:text-destructive"
+            aria-label={t.status === 'active' ? `Nonaktifkan ${t.name}` : `Aktifkan ${t.name}`}
+            onClick={() => setToToggle(t)}
+            className={t.status === 'active' ? 'hover:text-destructive' : 'hover:text-success'}
           >
-            <Iconify icon="solar:trash-bin-trash-linear" size={17} />
+            <Iconify
+              icon={t.status === 'active' ? 'solar:user-block-linear' : 'solar:user-check-linear'}
+              size={17}
+            />
           </Button>
         </div>
       ),
@@ -125,10 +142,15 @@ export function GuruListContainer() {
     <>
       <PageHeader
         title="Guru"
-        description="Akun guru mitra. Guru dapat mengelola paket soal & jadwal, serta melihat analitik sekolah yang diampu."
+        description={`Guru mengelola siswa & memantau hasil tryout di sekolahnya.${
+          quota.data ? ` Kuota guru: ${quota.data.guru.used}/${quota.data.guru.limit}.` : ''
+        }`}
         crumbs={[{ label: 'Ringkasan', href: paths.root }, { label: 'Kelola' }, { label: 'Guru' }]}
         actions={
-          <Button onClick={() => setDialog({ open: true, initial: null })}>
+          <Button
+            onClick={() => setDialog({ open: true, initial: null })}
+            disabled={Boolean(quota.data && quota.data.guru.used >= quota.data.guru.limit)}
+          >
             <Iconify icon="solar:user-plus-linear" size={18} />
             Tambah guru
           </Button>
@@ -139,7 +161,15 @@ export function GuruListContainer() {
           <SearchInput
             value={f.search}
             onChange={(search) => setF({ search })}
-            placeholder="Cari nama, email, mapel…"
+            placeholder="Cari nama atau email…"
+          />
+          <SelectField
+            aria-label="Filter sekolah"
+            value={f.school_id}
+            onChange={(school_id) => setF({ school_id })}
+            options={(schools.data ?? []).map((s) => ({ value: String(s.id), label: s.name }))}
+            allLabel="Semua sekolah"
+            className="sm:w-56"
           />
           <SelectField
             aria-label="Filter status"
@@ -172,14 +202,18 @@ export function GuruListContainer() {
         onOpenChange={(open) => setDialog((d) => ({ ...d, open }))}
       />
       <ConfirmDialog
-        open={Boolean(toDelete)}
-        onOpenChange={(v) => !v && setToDelete(null)}
-        tone="danger"
-        title="Hapus akun guru?"
-        description={`${toDelete?.name} tidak akan bisa login lagi. Paket & jadwal yang dibuatnya tetap tersimpan.`}
-        confirmLabel="Hapus"
-        loading={remove.isPending}
-        onConfirm={() => toDelete && remove.mutate(toDelete.id)}
+        open={Boolean(toToggle)}
+        onOpenChange={(v) => !v && setToToggle(null)}
+        tone={toToggle?.status === 'active' ? 'danger' : 'warning'}
+        title={toToggle?.status === 'active' ? 'Nonaktifkan guru?' : 'Aktifkan kembali guru?'}
+        description={
+          toToggle?.status === 'active'
+            ? `${toToggle?.name} tidak bisa login ke aplikasi mitra dan kuota guru dikembalikan. Data siswa tetap tersimpan.`
+            : `${toToggle?.name} bisa login kembali (memakai 1 kuota guru).`
+        }
+        confirmLabel={toToggle?.status === 'active' ? 'Nonaktifkan' : 'Aktifkan'}
+        loading={toggle.isPending}
+        onConfirm={() => toToggle && toggle.mutate(toToggle)}
       />
     </>
   );

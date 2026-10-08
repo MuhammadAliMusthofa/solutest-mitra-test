@@ -12,8 +12,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Input } from 'src/components/ui/input';
 import { Label } from 'src/components/ui/label';
 import { Button } from 'src/components/ui/button';
-import { Switch } from 'src/components/ui/switch';
-import { Checkbox } from 'src/components/ui/checkbox';
 import {
   Dialog,
   DialogTitle,
@@ -28,22 +26,22 @@ import { errorMessage } from 'src/core/http';
 import { memberService } from 'src/services/member';
 
 import { Iconify } from 'src/components/iconify/iconify';
+import { SelectField } from 'src/components/form/select-field';
 
-const schema = (creating: boolean) =>
-  z.object({
-    name: z.string().trim().min(1, 'Nama wajib diisi'),
-    email: z.string().trim().email('Format email tidak valid'),
-    phone: z.string().trim().optional(),
-    subject: z.string().trim().optional(),
-    password: creating
-      ? z.string().min(8, 'Password minimal 8 karakter')
-      : z.string().refine((v) => !v || v.length >= 8, 'Password minimal 8 karakter'),
-    school_ids: z.array(z.number()).min(1, 'Pilih minimal satu sekolah'),
-    active: z.boolean(),
-  });
+const schema = z.object({
+  name: z.string().trim().min(1, 'Nama wajib diisi'),
+  email: z.string().trim().email('Format email tidak valid'),
+  phone: z.string().trim().optional(),
+  password: z.string().refine((v) => !v || v.length >= 6, 'Password minimal 6 karakter'),
+  school_id: z.string().min(1, 'Pilih sekolah'),
+});
 
-type FormValues = z.infer<ReturnType<typeof schema>>;
+type FormValues = z.infer<typeof schema>;
 
+/**
+ * Tambah guru (akun Solutest; email yang sudah terdaftar dipakai apa adanya) atau pindah sekolah.
+ * Guru hanya mengampu satu sekolah dan hanya melihat siswa sekolah itu.
+ */
 export function TeacherDialog({
   open,
   onOpenChange,
@@ -56,11 +54,11 @@ export function TeacherDialog({
   const qc = useQueryClient();
   const creating = !initial;
   const schools = useQuery({
-    queryKey: ['members', 'schools'],
+    queryKey: ['member', 'schools', 'options'],
     queryFn: memberService.schools,
     enabled: open,
   });
-  const form = useForm<FormValues>({ resolver: zodResolver(schema(creating)) });
+  const form = useForm<FormValues>({ resolver: zodResolver(schema) });
   const { errors } = form.formState;
 
   useEffect(() => {
@@ -69,31 +67,32 @@ export function TeacherDialog({
       name: initial?.name ?? '',
       email: initial?.email ?? '',
       phone: initial?.phone ?? '',
-      subject: initial?.subject ?? '',
       password: '',
-      school_ids: initial?.schools.map((s) => s.id) ?? [],
-      active: (initial?.status ?? 'active') === 'active',
+      school_id: initial?.school_id ? String(initial.school_id) : '',
     });
   }, [open, initial, form]);
 
   const save = useMutation({
-    mutationFn: (v: FormValues) => {
-      const body = {
-        name: v.name,
-        email: v.email,
-        phone: v.phone,
-        subject: v.subject,
-        school_ids: v.school_ids,
-        status: v.active ? ('active' as const) : ('inactive' as const),
-        ...(v.password ? { password: v.password } : {}),
-      };
-      return initial
-        ? memberService.updateTeacher(initial.id, body)
-        : memberService.createTeacher(body);
-    },
-    onSuccess: () => {
-      toast.success(creating ? 'Akun guru dibuat' : 'Data guru diperbarui');
-      qc.invalidateQueries({ queryKey: ['members', 'teachers'] });
+    mutationFn: (v: FormValues) =>
+      initial
+        ? memberService.updateTeacher(initial.id, { school_id: Number(v.school_id) })
+        : memberService.createTeacher({
+            name: v.name,
+            email: v.email,
+            phone: v.phone,
+            password: v.password,
+            school_id: Number(v.school_id),
+          }),
+    onSuccess: (teacher) => {
+      if (creating) {
+        const isNew = 'is_new_account' in teacher && teacher.is_new_account;
+        toast.success(
+          isNew
+            ? 'Akun guru dibuat. Guru login dengan email & password ini.'
+            : 'Guru ditambahkan memakai akun Solutest yang sudah ada (password tidak berubah).'
+        );
+      } else toast.success('Sekolah guru diperbarui');
+      qc.invalidateQueries({ queryKey: ['member'] });
       onOpenChange(false);
     },
     onError: (err) => toast.error(errorMessage(err)),
@@ -101,11 +100,11 @@ export function TeacherDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{creating ? 'Tambah guru' : 'Ubah data guru'}</DialogTitle>
+          <DialogTitle>{creating ? 'Tambah guru' : 'Ubah sekolah guru'}</DialogTitle>
           <DialogDescription>
-            Guru hanya melihat analitik siswa dari sekolah yang dipilih.
+            Guru mengelola dan memantau hasil tryout siswa di sekolahnya saja.
           </DialogDescription>
         </DialogHeader>
         <form
@@ -117,7 +116,12 @@ export function TeacherDialog({
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="t-name">Nama lengkap</Label>
-              <Input id="t-name" {...form.register('name')} aria-invalid={Boolean(errors.name)} />
+              <Input
+                id="t-name"
+                disabled={!creating}
+                {...form.register('name')}
+                aria-invalid={Boolean(errors.name)}
+              />
               {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
             </div>
             <div className="space-y-2">
@@ -125,91 +129,72 @@ export function TeacherDialog({
               <Input
                 id="t-email"
                 type="email"
+                disabled={!creating}
                 {...form.register('email')}
                 aria-invalid={Boolean(errors.email)}
               />
               {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="t-phone">No. HP (opsional)</Label>
-              <Input id="t-phone" {...form.register('phone')} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="t-subject">Mapel diampu (opsional)</Label>
-              <Input id="t-subject" {...form.register('subject')} placeholder="mis. Matematika" />
-            </div>
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="t-password">
-                {creating ? 'Password' : 'Password baru (kosongkan bila tidak diubah)'}
-              </Label>
-              <Input
-                id="t-password"
-                type="password"
-                autoComplete="new-password"
-                {...form.register('password')}
-                aria-invalid={Boolean(errors.password)}
-              />
-              {errors.password && (
-                <p className="text-xs text-destructive">{errors.password.message}</p>
-              )}
-            </div>
+            {creating && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="t-phone">No. HP (opsional)</Label>
+                  <Input id="t-phone" inputMode="tel" {...form.register('phone')} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="t-password">Password</Label>
+                  <Input
+                    id="t-password"
+                    type="password"
+                    autoComplete="new-password"
+                    {...form.register('password')}
+                    aria-invalid={Boolean(errors.password)}
+                  />
+                  {errors.password && (
+                    <p className="text-xs text-destructive">{errors.password.message}</p>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground sm:col-span-2">
+                  Password wajib bila email belum punya akun Solutest. Bila sudah punya, kosongkan;
+                  guru login dengan password akun Solutest-nya.
+                </p>
+              </>
+            )}
+            {!creating && (
+              <p className="text-xs text-muted-foreground sm:col-span-2">
+                Nama & email mengikuti akun Solutest dan tidak bisa diubah di sini.
+              </p>
+            )}
           </div>
-          <fieldset className="space-y-2">
-            <legend className="text-sm font-medium">Sekolah yang diampu</legend>
+          <div className="space-y-2">
+            <Label htmlFor="t-school">Sekolah</Label>
             <Controller
               control={form.control}
-              name="school_ids"
+              name="school_id"
               render={({ field }) => (
-                <div className="grid max-h-56 gap-2 overflow-y-auto sm:grid-cols-2">
-                  {(schools.data ?? []).map((s) => (
-                    <label
-                      key={s.id}
-                      className="flex items-start gap-2 rounded-lg px-3 py-2 text-sm ring-1 ring-border has-[:checked]:bg-primary/6 has-[:checked]:ring-primary/40"
-                    >
-                      <Checkbox
-                        className="mt-0.5"
-                        checked={field.value?.includes(s.id)}
-                        onCheckedChange={(v) =>
-                          field.onChange(
-                            v
-                              ? [...(field.value ?? []), s.id]
-                              : (field.value ?? []).filter((x) => x !== s.id)
-                          )
-                        }
-                      />
-                      <span>
-                        <span className="block font-medium">{s.name}</span>
-                        <span className="block text-xs text-muted-foreground">
-                          {s.city} · {s.level}
-                        </span>
-                      </span>
-                    </label>
-                  ))}
-                </div>
+                <SelectField
+                  id="t-school"
+                  value={field.value ?? ''}
+                  onChange={field.onChange}
+                  options={(schools.data ?? []).map((s) => ({
+                    value: String(s.id),
+                    label: [s.name, s.city].filter(Boolean).join(' · '),
+                  }))}
+                  placeholder={schools.isPending ? 'Memuat sekolah…' : 'Pilih sekolah'}
+                  className="sm:w-full"
+                  invalid={Boolean(errors.school_id)}
+                />
               )}
             />
-            {errors.school_ids && (
-              <p className="text-xs text-destructive">{errors.school_ids.message}</p>
+            {errors.school_id && (
+              <p className="text-xs text-destructive">{errors.school_id.message}</p>
             )}
-          </fieldset>
-          <Controller
-            control={form.control}
-            name="active"
-            render={({ field }) => (
-              <label
-                htmlFor="t-active"
-                className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-3"
-              >
-                <span>
-                  <span className="block text-sm font-medium">Akun aktif</span>
-                  <span className="block text-xs text-muted-foreground">
-                    Akun nonaktif tidak bisa login.
-                  </span>
-                </span>
-                <Switch id="t-active" checked={field.value} onCheckedChange={field.onChange} />
-              </label>
+            {schools.data?.length === 0 && (
+              <p className="text-xs text-warning">
+                Belum ada sekolah mitra. Tambahkan dulu di menu Sekolah.
+              </p>
             )}
-          />
+          </div>
         </form>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>

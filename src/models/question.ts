@@ -1,16 +1,16 @@
-// Paket soal & soal (bank soal mitra). Dipakai admin & guru.
+// Paket soal & soal (be-solutest-mitra, khusus admin mitra).
 
 /**
- * Tipe soal:
- * 1 PG · 2 PG Kompleks · 3 Benar/Salah · 4 Benar/Salah Kompleks (tabel pernyataan Benar/Salah)
+ * Tipe soal (id sama dengan Solutest pusat):
+ * 1 PG · 2 PG Kompleks · 3 Benar/Salah · 9 Benar/Salah Kompleks (tabel pernyataan Benar/Salah)
  */
-export type QuestionType = 1 | 2 | 3 | 4;
+export type QuestionType = 1 | 2 | 3 | 9;
 
 export const QUESTION_TYPES: { id: QuestionType; name: string; short: string }[] = [
   { id: 1, name: 'Pilihan Ganda', short: 'PG' },
   { id: 2, name: 'Pilihan Ganda Kompleks', short: 'PG Kompleks' },
   { id: 3, name: 'Benar / Salah', short: 'Benar/Salah' },
-  { id: 4, name: 'Benar / Salah Kompleks', short: 'B/S Kompleks' },
+  { id: 9, name: 'Benar / Salah Kompleks', short: 'B/S Kompleks' },
 ];
 
 export const questionTypeName = (id: number) =>
@@ -32,7 +32,7 @@ export interface QuestionOption {
 
 export interface Question {
   id: number;
-  code: string;
+  order: number;
   type_question_id: QuestionType;
   question_text: string;
   /** pembahasan */
@@ -46,36 +46,42 @@ export interface Question {
   /** sub kompetensi (master /master/sub-competencies milik kompetensi) */
   sub_competency_id: number | null;
   sub_competency_name: string | null;
-  /** indikator soal (master /master/indicators milik sub kompetensi) */
-  indicator_id: number | null;
-  indicator_name: string | null;
-  category_id: number;
-  category_name: string;
   options: QuestionOption[];
   attachments: Attachment[];
-  /** manual = dibuat mitra; bank = soal contoh bawaan */
-  source: 'manual' | 'bank';
-  createdAt: string;
-  updatedAt: string;
+  /** id soal Solutest asal (paket hasil import katalog) */
+  source_question_id: number | null;
 }
+
+export type PackageSource = 'MITRA' | 'SOLUTEST';
 
 export interface Package {
   id: number;
   code: string;
   title: string;
-  class_id: number;
-  class_name: string;
-  subject_id: number;
-  subject_name: string;
+  /** HTML/null */
+  description: string | null;
+  /** durasi bawaan pengerjaan (menit) */
+  time: number;
+  show_score: boolean;
+  is_cheat_detection: boolean;
+  max_violations: number;
+  class_id: number | null;
+  class_name: string | null;
+  subject_id: number | null;
+  subject_name: string | null;
+  /** MITRA = dibuat mitra · SOLUTEST = disalin dari katalog Solutest */
+  source: PackageSource;
+  source_package_id: number | null;
   question_count: number;
   /** jumlah jadwal tryout yang memakai paket ini (paket terpakai tidak bisa dihapus) */
   schedule_count: number;
-  created_by: string;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface PackageDetail extends Package {
+  /** false bila sudah ada siswa mengerjakan → soal terkunci, duplikat untuk mengedit */
+  is_editable: boolean;
   questions: Question[];
 }
 
@@ -83,6 +89,11 @@ export interface PackageBody {
   title: string;
   class_id: number;
   subject_id: number;
+  description?: string | null;
+  time?: number;
+  show_score?: boolean;
+  is_cheat_detection?: boolean;
+  max_violations?: number;
 }
 
 export interface QuestionBody {
@@ -93,8 +104,6 @@ export interface QuestionBody {
   text_image: string;
   competency_id: number | null;
   sub_competency_id: number | null;
-  indicator_id: number | null;
-  category_id: number;
   options: Omit<QuestionOption, 'id'>[];
   attachments: Attachment[];
 }
@@ -113,42 +122,40 @@ export interface SubjectOption {
   name: string;
 }
 
-/** Kompetensi per kelas & mapel — GET /master/competencies?class_id&subject_id */
+/** Kompetensi per kelas & mapel — GET /admin/masters/competencies?class_id&subject_id */
 export interface CompetencyOption {
   id: number;
-  code: string;
   name: string;
   class_id: number;
   subject_id: number;
-  order: number;
 }
 
-/** Sub kompetensi milik satu kompetensi — GET /master/sub-competencies?competency_id */
+/** Sub kompetensi milik satu kompetensi — GET /admin/masters/sub-competencies?competency_id */
 export interface SubCompetencyOption {
   id: number;
-  code: string;
   name: string;
   competency_id: number;
-  order: number;
-}
-
-/** Indikator milik satu sub kompetensi — GET /master/indicators?sub_competency_id */
-export interface IndicatorOption {
-  id: number;
-  code: string;
-  name: string;
-  sub_competency_id: number;
-  order: number;
-}
-
-export interface CategoryOption {
-  id: number;
-  name: string;
 }
 
 export interface PackageOption {
   id: number;
   code: string;
   title: string;
+  time: number;
   question_count: number;
+}
+
+/** Paket Solutest yang dibagikan ke mitra — GET /admin/catalog/packages */
+export interface CatalogPackage {
+  id: number;
+  code: string | null;
+  title: string;
+  description: string | null;
+  time: number | null;
+  class_id: number | null;
+  class_name: string | null;
+  subject_id: number | null;
+  subject_name: string | null;
+  category_name: string | null;
+  total_question: number;
 }

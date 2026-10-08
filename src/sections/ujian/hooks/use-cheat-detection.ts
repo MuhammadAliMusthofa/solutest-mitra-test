@@ -14,6 +14,8 @@ interface Options {
   maxViolations?: number;
   /** false selama dialog lain (waktu habis / submit) agar tidak dobel */
   enabled?: boolean;
+  /** pelanggaran yang sudah tercatat di server (lanjutkan setelah reload / pindah perangkat) */
+  initialCount?: number;
 }
 
 const isTabletLikeDevice = () =>
@@ -51,11 +53,21 @@ export function useCheatDetection({
   isCheatDetectionActive = true,
   maxViolations = 3,
   enabled = true,
+  initialCount = 0,
 }: Options) {
-  const [violationCount, setViolationCount] = useState(0);
+  const [violationCount, setViolationCount] = useState(initialCount);
   const [reason, setReason] = useState('');
   const [open, setOpen] = useState(false);
-  const countRef = useRef(0);
+  const countRef = useRef(initialCount);
+  // sesi dimuat setelah hook terpasang → sesuaikan state saat render, ref di effect
+  const [prevInitial, setPrevInitial] = useState(initialCount);
+  if (initialCount !== prevInitial) {
+    setPrevInitial(initialCount);
+    if (initialCount > violationCount) setViolationCount(initialCount);
+  }
+  useEffect(() => {
+    if (initialCount > countRef.current) countRef.current = initialCount;
+  }, [initialCount]);
   const visibilityChangedDuringGrace = useRef(false);
   const graceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 

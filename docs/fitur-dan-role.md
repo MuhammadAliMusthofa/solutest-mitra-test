@@ -1,5 +1,11 @@
 # Fitur & Role
 
+> **Status terbaru:** role dari backend = `ADMIN` · `GURU` · `SISWA`. Guru mengampu **satu** sekolah,
+> mengelola siswa sekolahnya (tambah/import/nonaktif) dan melihat Hasil Tryout — **tanpa** paket
+> soal & jadwal. Admin menambah sekolah dari data circl (menu Sekolah). Menu analitik/progres hanya
+> tampil saat `NEXT_PUBLIC_MOCK=true` (data simulasi). Predikat: Kurang < 55 ≤ Memadai < 70 ≤ Baik
+> < 85 ≤ Istimewa. Profil akun hanya dibaca (nama/email/password dikelola di akun Solutest).
+
 ## 1. Admin Mitra (`admin-mitra`, `/admin`)
 
 | Menu | Path | Isi |

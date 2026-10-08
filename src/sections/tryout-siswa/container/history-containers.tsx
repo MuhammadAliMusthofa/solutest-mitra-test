@@ -1,6 +1,6 @@
 'use client';
 
-import type { HistoryItem, ExplanationQuestion } from 'src/models/exam';
+import type { HistoryItem } from 'src/models/exam';
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
@@ -15,7 +15,6 @@ import { SISWA_PATHS } from 'src/config/paths';
 import { useHydrated } from 'src/hooks/use-hydrated';
 import { useUrlState } from 'src/hooks/use-url-state';
 
-import { cn } from 'src/lib/utils';
 import { formatScore, formatDateTime } from 'src/utils/format';
 
 import { practiceService } from 'src/services/student';
@@ -30,6 +29,7 @@ import { HtmlContent } from 'src/components/data-display/html-content';
 import { SectionCard } from 'src/components/data-display/section-card';
 import { TablePagination } from 'src/components/data-display/table-pagination';
 
+import { ReviewAnswer } from 'src/sections/_global/components/review-answer';
 import { KICKED_OUT_KEY } from 'src/sections/ujian/hooks/use-cheat-detection';
 import { PredicateBadge } from 'src/sections/_global/components/predicate-badge';
 
@@ -52,12 +52,13 @@ function HistoryActions({ item }: { item: Pick<HistoryItem, 'practice_id'> }) {
   );
 }
 
-/** Halaman setelah mengumpulkan tryout. */
+/** Halaman setelah mengumpulkan tryout. Nilai dihitung consumer → polling sampai selesai. */
 export function TryoutFinishedContainer() {
   const { practiceId } = useParams<{ practiceId: string }>();
   const query = useQuery({
     queryKey: ['student', 'explanation', practiceId],
-    queryFn: () => practiceService.explanation(practiceId),
+    queryFn: () => practiceService.result(practiceId),
+    refetchInterval: (q) => (q.state.data && !q.state.data.is_processed ? 2500 : false),
   });
   // alasan auto-submit karena pelanggaran (ditulis deteksi kecurangan), dibaca sekali lalu dihapus
   const hydrated = useHydrated();
@@ -76,7 +77,6 @@ export function TryoutFinishedContainer() {
     }
   }, []);
   const d = query.data;
-  const correct = d?.questions.filter((q) => q.score >= 100).length ?? 0;
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -97,16 +97,25 @@ export function TryoutFinishedContainer() {
           )}
           {query.isPending ? (
             <Skeleton className="mx-auto h-24 w-48 rounded-xl" />
+          ) : d && !d.is_processed ? (
+            <p className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <Iconify icon="svg-spinners:180-ring" size={18} />
+              Nilai sedang dihitung…
+            </p>
+          ) : d && d.score === null ? (
+            <p className="text-sm text-muted-foreground">
+              Nilai tryout ini tidak ditampilkan oleh penyelenggara.
+            </p>
           ) : d ? (
             <>
               <p className="text-sm text-muted-foreground">Skor kamu</p>
               <p className="text-5xl font-semibold tabular-nums">{formatScore(d.score)}</p>
               <div className="mt-2 flex justify-center">
-                <PredicateBadge score={d.score} />
+                <PredicateBadge predicate={d.predicate} />
               </div>
-              <p className="mt-3 text-sm text-muted-foreground">
-                {correct} benar dari {d.total_questions} soal
-              </p>
+              {d.total_correct !== null && (
+                <p className="mt-3 text-sm text-muted-foreground">{d.total_correct} soal benar</p>
+              )}
             </>
           ) : (
             <ErrorState error={query.error} onRetry={() => query.refetch()} />
@@ -160,17 +169,23 @@ export function HistoryContainer() {
           >
             <div className="grid size-16 shrink-0 place-items-center rounded-2xl bg-primary/8">
               <span className="text-xl font-semibold text-primary tabular-nums">
-                {formatScore(h.score, 0)}
+                {h.is_processed ? formatScore(h.score ?? undefined, 0) : '…'}
               </span>
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="font-semibold">{h.title}</p>
-                <PredicateBadge score={h.score} />
+                <PredicateBadge predicate={h.predicate} />
+                {h.is_auto_ended && <StatusPill tone="warning">Dikumpulkan otomatis</StatusPill>}
               </div>
               <p className="mt-1 text-sm text-muted-foreground">
-                {h.subject_name} · {h.total_question} soal · {h.time} menit ·{' '}
-                {formatDateTime(h.submitted_at)}
+                {[
+                  h.subject_name || h.package_title,
+                  `${h.time} menit`,
+                  formatDateTime(h.submitted_at),
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
               </p>
             </div>
             <HistoryActions item={h} />
@@ -186,114 +201,37 @@ export function HistoryContainer() {
   );
 }
 
-const optionClass = (o: { is_true: boolean; selected: boolean }) =>
-  cn(
-    'flex items-start justify-between gap-2 rounded-lg px-3 py-2 text-sm ring-1 ring-border',
-    o.is_true && 'bg-success/8 ring-success/40',
-    o.selected && !o.is_true && 'bg-destructive/8 ring-destructive/40'
-  );
-
-const tfLabel = (v: number | null | undefined) =>
-  v === null || v === undefined ? '—' : Number(v) === 1 ? 'Benar' : 'Salah';
-
-function StudentAnswer({ q }: { q: ExplanationQuestion }) {
-  if (q.type_question_id === 4) {
-    const rows = q.answer as [number, number | null][];
-    return (
-      <div className="overflow-x-auto rounded-lg ring-1 ring-border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/60 text-left text-xs font-semibold text-muted-foreground uppercase">
-            <tr>
-              <th scope="col" className="px-3 py-2">
-                Pernyataan
-              </th>
-              <th scope="col" className="w-28 px-3 py-2 text-center">
-                Jawabanmu
-              </th>
-              <th scope="col" className="w-24 px-3 py-2 text-center">
-                Kunci
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {[...q.options]
-              .sort((a, b) => a.order - b.order)
-              .map((o) => {
-                const chosen = rows.find((r) => Number(r[0]) === o.id)?.[1];
-                const answered = chosen !== null && chosen !== undefined;
-                const ok = answered && Number(chosen) === (o.is_true ? 1 : 0);
-                return (
-                  <tr key={o.id} className="border-t border-border">
-                    <td className="px-3 py-2">
-                      <HtmlContent html={o.option_text} />
-                    </td>
-                    <td
-                      className={cn(
-                        'px-3 py-2 text-center font-semibold',
-                        answered && (ok ? 'text-success' : 'text-destructive'),
-                        !answered && 'text-muted-foreground'
-                      )}
-                    >
-                      <span className="inline-flex items-center gap-1">
-                        {answered && (
-                          <Iconify
-                            icon={ok ? 'solar:check-circle-linear' : 'solar:close-circle-linear'}
-                            size={16}
-                          />
-                        )}
-                        {tfLabel(chosen)}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-center font-semibold text-success">
-                      {o.is_true ? 'Benar' : 'Salah'}
-                    </td>
-                  </tr>
-                );
-              })}
-          </tbody>
-        </table>
-      </div>
-    );
-  }
-  return (
-    <ul className="space-y-1.5">
-      {q.options.map((o, i) => (
-        <li key={o.id} className={optionClass(o)}>
-          <span className="flex gap-2">
-            <span className="font-semibold">
-              {q.type_question_id === 3 ? '' : `${'ABCDEFGHIJ'[i]}.`}
-            </span>
-            <HtmlContent html={o.option_text} as="span" />
-          </span>
-          <span className="shrink-0 text-xs font-semibold">
-            {o.is_true && <span className="text-success">Kunci</span>}
-            {o.selected && (
-              <span className={o.is_true ? 'text-success' : 'text-destructive'}>
-                {o.is_true ? ' · ' : ''}Jawabanmu
-              </span>
-            )}
-          </span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 export function ExplanationContainer() {
   const { practiceId } = useParams<{ practiceId: string }>();
   const query = useQuery({
     queryKey: ['student', 'explanation', practiceId],
-    queryFn: () => practiceService.explanation(practiceId),
+    queryFn: () => practiceService.result(practiceId),
   });
   const d = query.data;
 
   return (
     <>
+      {d && !d.review_available && (
+        <SectionCard className="mb-6">
+          <EmptyState
+            title="Pembahasan belum dibuka"
+            description={
+              d.score === null && d.is_processed
+                ? 'Penyelenggara tidak menampilkan nilai & pembahasan tryout ini.'
+                : `Kunci & pembahasan tersedia setelah tryout ditutup (${formatDateTime(d.schedule_end_at)}).`
+            }
+            icon="solar:lock-keyhole-linear"
+          />
+        </SectionCard>
+      )}
       <PageHeader
         title={d ? `Pembahasan — ${d.title}` : 'Pembahasan'}
         backHref={SISWA_PATHS.history}
         crumbs={[{ label: 'Riwayat', href: SISWA_PATHS.history }, { label: 'Pembahasan' }]}
-        actions={d && <StatusPill tone="primary">Skor {formatScore(d.score)}</StatusPill>}
+        actions={
+          d &&
+          d.score !== null && <StatusPill tone="primary">Skor {formatScore(d.score)}</StatusPill>
+        }
       />
       {query.isPending && <Skeleton className="h-96 w-full rounded-card" />}
       {query.isError && <ErrorState error={query.error} onRetry={() => query.refetch()} />}
@@ -347,7 +285,7 @@ export function ExplanationContainer() {
                 </div>
               )}
               <HtmlContent html={q.question_text} className="mb-3" />
-              <StudentAnswer q={q} />
+              <ReviewAnswer q={q} />
               {q.description && (
                 <div className="mt-4 rounded-lg bg-primary/5 p-4 text-sm">
                   <p className="mb-1 flex items-center gap-1.5 font-semibold text-primary">

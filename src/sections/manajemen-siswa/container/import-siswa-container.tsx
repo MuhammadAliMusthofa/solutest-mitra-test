@@ -1,12 +1,12 @@
 'use client';
 
 import type { ImportStudentResult } from 'src/models/member';
-import type { ParseResult, ImportRowFilter } from '../helpers/import-siswa';
+import type { ParsedRow, ParseResult, ImportRowFilter } from '../helpers/import-siswa';
 
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { useRef, useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { Button } from 'src/components/ui/button';
 import {
@@ -27,6 +27,7 @@ import { cn } from 'src/lib/utils';
 import { memberService } from 'src/services/member';
 
 import { Iconify } from 'src/components/iconify/iconify';
+import { SelectField } from 'src/components/form/select-field';
 import { StatusPill } from 'src/components/data-display/status-pill';
 import { PageHeader } from 'src/components/data-display/page-header';
 import { SectionCard } from 'src/components/data-display/section-card';
@@ -34,37 +35,102 @@ import { SectionCard } from 'src/components/data-display/section-card';
 import {
   parseTable,
   IMPORT_ACCEPT,
-  IMPORT_COLUMNS,
+  importColumns,
+  resolveSchool,
   readSpreadsheet,
   splitParsedRows,
   MAX_IMPORT_ROWS,
   downloadTemplate,
+  IMPORT_BATCH_SIZE,
   validateImportFile,
   MAX_IMPORT_FILE_MB,
 } from '../helpers/import-siswa';
+
+const STATUS_LABEL = {
+  created: { label: 'Akun baru', tone: 'success' },
+  existing_account: { label: 'Akun Solutest lama', tone: 'info' },
+  skipped: { label: 'Dilewati', tone: 'warning' },
+  failed: { label: 'Gagal', tone: 'danger' },
+} as const;
+
+const mergeResults = (a: ImportStudentResult | null, b: ImportStudentResult, offset: number) => ({
+  summary: {
+    total: (a?.summary.total ?? 0) + b.summary.total,
+    created: (a?.summary.created ?? 0) + b.summary.created,
+    existing_account: (a?.summary.existing_account ?? 0) + b.summary.existing_account,
+    skipped: (a?.summary.skipped ?? 0) + b.summary.skipped,
+    failed: (a?.summary.failed ?? 0) + b.summary.failed,
+  },
+  results: [...(a?.results ?? []), ...b.results.map((r) => ({ ...r, row: r.row + offset }))],
+});
 
 const STEPS = ['Unduh template', 'Unggah file', 'Periksa & kirim'];
 
 export function ImportSiswaContainer() {
   const qc = useQueryClient();
-  const { paths } = usePanel();
+  const { panel, isAdmin, paths } = usePanel();
+  const columns = importColumns(isAdmin);
+  const schools = useQuery({
+    queryKey: ['member', 'schools', 'options'],
+    queryFn: memberService.schools,
+    enabled: isAdmin,
+  });
+  const [defaultSchool, setDefaultSchool] = useState('');
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState('');
   const [parsed, setParsed] = useState<ParseResult | null>(null);
   const [filter, setFilter] = useState<ImportRowFilter>('all');
   const [result, setResult] = useState<ImportStudentResult | null>(null);
   const [dragging, setDragging] = useState(false);
-  const { all, valid, invalid, visible } = splitParsedRows(parsed, filter);
+  // admin: kolom sekolah dicocokkan ke sekolah mitra (kosong = sekolah bawaan yang dipilih)
+  const withSchool: ParseResult | null =
+    parsed && isAdmin
+      ? {
+          ...parsed,
+          rows: parsed.rows.map((r): ParsedRow => {
+            const school = resolveSchool(
+              r.data.school,
+              schools.data ?? [],
+              Number(defaultSchool) || undefined
+            );
+            return school.error ? { ...r, errors: [...r.errors, school.error] } : r;
+          }),
+        }
+      : parsed;
+  const { all, valid, invalid, visible } = splitParsedRows(withSchool, filter);
   const step = result ? 3 : parsed ? 2 : 1;
 
   const submit = useMutation({
-    mutationFn: () => memberService.importStudents(valid.map((r) => r.data)),
+    mutationFn: async () => {
+      const rows = valid.map((r) => ({
+        ...r.data,
+        school_id: isAdmin
+          ? resolveSchool(r.data.school, schools.data ?? [], Number(defaultSchool) || undefined).id
+          : undefined,
+      }));
+      let merged: ImportStudentResult | null = null;
+      setProgress({ done: 0, total: rows.length });
+      for (let i = 0; i < rows.length; i += IMPORT_BATCH_SIZE) {
+        const res = await memberService.importStudents(
+          panel,
+          rows.slice(i, i + IMPORT_BATCH_SIZE),
+          Number(defaultSchool) || undefined
+        );
+        merged = mergeResults(merged, res, i);
+        setProgress({ done: Math.min(i + IMPORT_BATCH_SIZE, rows.length), total: rows.length });
+      }
+      return merged as ImportStudentResult;
+    },
     onSuccess: (res) => {
       setResult(res);
-      qc.invalidateQueries({ queryKey: ['members'] });
-      toast.success(`${res.created} akun siswa dibuat`);
+      qc.invalidateQueries({ queryKey: ['member'] });
+      toast.success(
+        `${res.summary.created + res.summary.existing_account} siswa ditambahkan ke mitra`
+      );
     },
     onError: (err) => toast.error(errorMessage(err)),
+    onSettled: () => setProgress(null),
   });
 
   const handleFile = async (file?: File) => {
@@ -136,21 +202,39 @@ export function ImportSiswaContainer() {
         <div className="space-y-6">
           <SectionCard title="1. Template">
             <p className="text-sm text-muted-foreground">
-              Kolom wajib: <b>nama, email, password (≥ 6 karakter), sekolah</b>. Opsional: NISN (10
-              digit), kelas, jenjang (SD/SMP/SMA/SMK). Maks {MAX_IMPORT_ROWS} baris ·{' '}
+              Kolom wajib: <b>nama, email</b>. Password (≥ 6 karakter) wajib untuk email yang belum
+              punya akun Solutest; email yang sudah terdaftar memakai akun lamanya. Opsional: NISN
+              (10 digit), kelas, no. HP
+              {isAdmin ? ', sekolah (nama/NPSN sekolah mitra)' : ''}. Maks {MAX_IMPORT_ROWS} baris ·{' '}
               {MAX_IMPORT_FILE_MB} MB.
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
-              <Button variant="outline" onClick={() => downloadTemplate('xlsx')}>
+              <Button variant="outline" onClick={() => downloadTemplate('xlsx', isAdmin)}>
                 <Iconify icon="solar:file-download-linear" size={18} />
                 Template .xlsx
               </Button>
-              <Button variant="outline" onClick={() => downloadTemplate('csv')}>
+              <Button variant="outline" onClick={() => downloadTemplate('csv', isAdmin)}>
                 <Iconify icon="solar:file-download-linear" size={18} />
                 Template .csv
               </Button>
             </div>
           </SectionCard>
+
+          {isAdmin && (
+            <SectionCard title="Sekolah bawaan">
+              <p className="mb-3 text-sm text-muted-foreground">
+                Dipakai untuk baris yang kolom sekolahnya kosong.
+              </p>
+              <SelectField
+                aria-label="Sekolah bawaan"
+                value={defaultSchool}
+                onChange={setDefaultSchool}
+                options={(schools.data ?? []).map((s) => ({ value: String(s.id), label: s.name }))}
+                placeholder={schools.isPending ? 'Memuat sekolah…' : 'Pilih sekolah'}
+                className="sm:w-full"
+              />
+            </SectionCard>
+          )}
 
           <SectionCard title="2. Unggah file">
             <label
@@ -236,24 +320,34 @@ export function ImportSiswaContainer() {
 
           {result && (
             <div className="space-y-4">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-xl bg-success/8 p-4">
-                  <p className="text-xs text-muted-foreground">Akun dibuat</p>
-                  <p className="text-2xl font-semibold text-success">{result.created}</p>
-                </div>
-                <div className="rounded-xl bg-warning/8 p-4">
-                  <p className="text-xs text-muted-foreground">Dilewati</p>
-                  <p className="text-2xl font-semibold text-warning">{result.skipped}</p>
-                </div>
+              <div className="grid gap-3 sm:grid-cols-4">
+                {(
+                  [
+                    ['Akun baru', result.summary.created, 'bg-success/8 text-success'],
+                    ['Akun lama', result.summary.existing_account, 'bg-info/8 text-info'],
+                    ['Dilewati', result.summary.skipped, 'bg-warning/8 text-warning'],
+                    ['Gagal', result.summary.failed, 'bg-destructive/8 text-destructive'],
+                  ] as const
+                ).map(([label, n, tone]) => (
+                  <div key={label} className={cn('rounded-xl p-4', tone)}>
+                    <p className="text-xs text-muted-foreground">{label}</p>
+                    <p className="text-2xl font-semibold">{n}</p>
+                  </div>
+                ))}
               </div>
-              {result.errors.length > 0 && (
-                <ul className="space-y-1 rounded-xl bg-muted/50 p-4 text-sm">
-                  {result.errors.map((e) => (
-                    <li key={`${e.row}-${e.email}`}>
-                      Baris {e.row} · {e.email}:{' '}
-                      <span className="text-destructive">{e.message}</span>
-                    </li>
-                  ))}
+              {result.results.some((r) => r.status === 'skipped' || r.status === 'failed') && (
+                <ul className="max-h-72 space-y-1 overflow-y-auto rounded-xl bg-muted/50 p-4 text-sm">
+                  {result.results
+                    .filter((r) => r.status === 'skipped' || r.status === 'failed')
+                    .map((r) => (
+                      <li key={`${r.row}-${r.email}`} className="flex flex-wrap items-center gap-2">
+                        <StatusPill tone={STATUS_LABEL[r.status].tone}>
+                          {STATUS_LABEL[r.status].label}
+                        </StatusPill>
+                        Baris {r.row} · {r.email}:
+                        <span className="text-destructive">{r.error}</span>
+                      </li>
+                    ))}
                 </ul>
               )}
               <div className="flex gap-2">
@@ -274,11 +368,13 @@ export function ImportSiswaContainer() {
                   <TableHeader className="sticky top-0 bg-card">
                     <TableRow>
                       <TableHead className="w-14">Baris</TableHead>
-                      {IMPORT_COLUMNS.filter((c) => c.key !== 'password').map((c) => (
-                        <TableHead key={c.key} className="text-xs uppercase">
-                          {c.header}
-                        </TableHead>
-                      ))}
+                      {columns
+                        .filter((c) => c.key !== 'password')
+                        .map((c) => (
+                          <TableHead key={c.key} className="text-xs uppercase">
+                            {c.header}
+                          </TableHead>
+                        ))}
                       <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -289,9 +385,9 @@ export function ImportSiswaContainer() {
                         <TableCell>{r.data.name || '-'}</TableCell>
                         <TableCell className="text-xs">{r.data.email || '-'}</TableCell>
                         <TableCell className="font-mono text-xs">{r.data.nisn || '-'}</TableCell>
-                        <TableCell>{r.data.school || '-'}</TableCell>
                         <TableCell>{r.data.class || '-'}</TableCell>
-                        <TableCell>{r.data.jenjang || '-'}</TableCell>
+                        <TableCell className="text-xs">{r.data.phone || '-'}</TableCell>
+                        {isAdmin && <TableCell>{r.data.school || '(bawaan)'}</TableCell>}
                         <TableCell>
                           {r.errors.length ? (
                             <div className="space-y-0.5">
@@ -314,9 +410,11 @@ export function ImportSiswaContainer() {
               </div>
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                 <p className="text-sm text-muted-foreground">
-                  {invalid.length
-                    ? `${invalid.length} baris bermasalah tidak akan dikirim.`
-                    : 'Semua baris valid.'}
+                  {progress
+                    ? `Mengirim ${progress.done}/${progress.total} baris…`
+                    : invalid.length
+                      ? `${invalid.length} baris bermasalah tidak akan dikirim.`
+                      : 'Semua baris valid.'}
                 </p>
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={reset}>
@@ -329,7 +427,7 @@ export function ImportSiswaContainer() {
                     onClick={() => submit.mutate()}
                   >
                     {submit.isPending && <Iconify icon="svg-spinners:180-ring" size={16} />}
-                    Buat {valid.length} akun siswa
+                    Tambahkan {valid.length} siswa
                   </Button>
                 </div>
               </div>

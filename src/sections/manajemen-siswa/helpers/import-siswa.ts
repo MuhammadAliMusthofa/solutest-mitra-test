@@ -1,8 +1,10 @@
 // Parse & validasi file import siswa (port dari prototipe mitra).
 
-import type { ImportStudentRow } from 'src/models/member';
+import type { SchoolOption, ImportStudentRow } from 'src/models/member';
 
 export const MAX_IMPORT_ROWS = 1000;
+/** Batas backend per request; file besar dikirim bertahap. */
+export const IMPORT_BATCH_SIZE = 200;
 export const JENJANG_OPTIONS = ['SD', 'SMP', 'SMA', 'SMK'];
 
 /** Kolom template: [key, judul kolom, wajib?, contoh]. */
@@ -14,12 +16,16 @@ export const IMPORT_COLUMNS: {
 }[] = [
   { key: 'name', header: 'nama', required: true, example: 'Adit Pratama' },
   { key: 'email', header: 'email', required: true, example: 'adit.pratama@contoh.id' },
-  { key: 'password', header: 'password', required: true, example: 'rahasia123' },
+  { key: 'password', header: 'password', required: false, example: 'rahasia123' },
   { key: 'nisn', header: 'nisn', required: false, example: '0051234567' },
-  { key: 'school', header: 'sekolah', required: true, example: 'SMA Negeri 1 Bandung' },
   { key: 'class', header: 'kelas', required: false, example: 'XII IPA 1' },
-  { key: 'jenjang', header: 'jenjang', required: false, example: 'SMA' },
+  { key: 'phone', header: 'no_hp', required: false, example: '081234567890' },
+  { key: 'school', header: 'sekolah', required: false, example: 'SMA NEGERI 1 TEGAL' },
 ];
+
+/** Kolom template per panel: guru tidak mengisi sekolah (otomatis sekolah guru). */
+export const importColumns = (withSchool: boolean) =>
+  IMPORT_COLUMNS.filter((c) => withSchool || c.key !== 'school');
 
 /** Alias judul kolom yang diterima (huruf kecil, tanpa spasi/tanda baca). */
 const HEADER_ALIASES: Record<string, keyof ImportStudentRow> = {
@@ -36,7 +42,11 @@ const HEADER_ALIASES: Record<string, keyof ImportStudentRow> = {
   school: 'school',
   kelas: 'class',
   class: 'class',
-  jenjang: 'jenjang',
+  nohp: 'phone',
+  hp: 'phone',
+  telepon: 'phone',
+  phone: 'phone',
+  npsn: 'school',
 };
 
 const normalizeHeader = (h: string) => h.toLowerCase().replace(/[^a-z]/g, '');
@@ -63,12 +73,9 @@ export const validateRow = (row: ImportStudentRow, seenEmails: Set<string>): str
   if (!row.email) errors.push('Email wajib diisi');
   else if (!EMAIL_RE.test(row.email)) errors.push('Format email tidak valid');
   else if (seenEmails.has(row.email)) errors.push('Email duplikat di file');
-  if (!row.password) errors.push('Password wajib diisi');
-  else if (row.password.length < 6) errors.push('Password minimal 6 karakter');
-  if (!row.school) errors.push('Sekolah wajib diisi');
+  // password hanya wajib untuk email yang belum punya akun Solutest (dicek backend per baris)
+  if (row.password && row.password.length < 6) errors.push('Password minimal 6 karakter');
   if (row.nisn && !/^\d{10}$/.test(row.nisn)) errors.push('NISN harus 10 digit angka');
-  if (row.jenjang && !JENJANG_OPTIONS.includes(row.jenjang))
-    errors.push(`Jenjang harus salah satu: ${JENJANG_OPTIONS.join(', ')}`);
   return errors;
 };
 
@@ -103,7 +110,7 @@ export const parseTable = (table: unknown[][]): ParseResult => {
       nisn: cell(r, 'nisn'),
       school: cell(r, 'school'),
       class: cell(r, 'class'),
-      jenjang: cell(r, 'jenjang').toUpperCase(),
+      phone: cell(r, 'phone'),
     };
     const errors = validateRow(data, seenEmails);
     if (data.email) seenEmails.add(data.email);
@@ -123,11 +130,12 @@ export const readSpreadsheet = async (file: File): Promise<unknown[][]> => {
   return XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, raw: false, defval: '' });
 };
 
-export const downloadTemplate = async (format: 'xlsx' | 'csv') => {
+export const downloadTemplate = async (format: 'xlsx' | 'csv', withSchool = true) => {
   const XLSX = await import('xlsx');
+  const columns = importColumns(withSchool);
   const sheet = XLSX.utils.aoa_to_sheet([
-    IMPORT_COLUMNS.map((c) => c.header),
-    IMPORT_COLUMNS.map((c) => c.example),
+    columns.map((c) => c.header),
+    columns.map((c) => c.example),
   ]);
   // NISN sebagai teks agar nol di depan tidak hilang saat dibuka di Excel.
   sheet.D2 = { t: 's', v: IMPORT_COLUMNS[3].example };
@@ -148,6 +156,27 @@ export const validateImportFile = (file: File): string | null => {
 };
 
 export type ImportRowFilter = 'all' | 'valid' | 'invalid';
+
+const normalizeName = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
+
+/**
+ * Cocokkan kolom `sekolah` (nama atau NPSN) dengan sekolah mitra. Kosong → sekolah bawaan.
+ * Mengembalikan id sekolah atau pesan error.
+ */
+export const resolveSchool = (
+  value: string,
+  schools: SchoolOption[],
+  defaultSchoolId?: number
+): { id?: number; error?: string } => {
+  if (!value) {
+    return defaultSchoolId
+      ? { id: defaultSchoolId }
+      : { error: 'Pilih sekolah atau isi kolom sekolah' };
+  }
+  const key = normalizeName(value);
+  const found = schools.find((s) => s.npsn === value.trim() || normalizeName(s.name) === key);
+  return found ? { id: found.id } : { error: `Sekolah "${value}" belum terdaftar di mitra` };
+};
 
 /** Pisahkan baris valid & bermasalah, plus baris yang tampil untuk filter aktif. */
 export const splitParsedRows = (parsed: ParseResult | null, filter: ImportRowFilter) => {

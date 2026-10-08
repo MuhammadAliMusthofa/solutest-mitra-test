@@ -2,7 +2,6 @@
 // Semua handler analitik diturunkan dari dataset ini agar filter `code` konsisten antar halaman.
 
 import type { TryoutOption } from 'src/models/analytics';
-import type { TryoutSchedule } from 'src/models/schedule';
 
 const seeded = (seed: number) => {
   let s = seed;
@@ -188,7 +187,7 @@ TRYOUTS.forEach((tryout, t) => {
   tryout.participants = STUDENTS.filter((s) => s.scores[t]).length;
 });
 
-export const SCHEDULES: TryoutSchedule[] = TRYOUTS.map((tryout, i) => ({
+export const SCHEDULES = TRYOUTS.map((tryout, i) => ({
   id: 9001 + i,
   code: tryout.code,
   title: tryout.name,

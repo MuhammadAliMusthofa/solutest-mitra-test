@@ -65,18 +65,22 @@ function Podium({ rows }: { rows: LeaderboardRow[] }) {
 
 export function LeaderboardContainer() {
   const { user } = useCurrentUser();
-  const [f, setF] = useUrlState({ paket: '', search: '', page: '1' });
+  const [f, setF] = useUrlState({ paket: '', scope: 'all', search: '', page: '1' });
   const options = useQuery({
     queryKey: ['student', 'leaderboard-options'],
     queryFn: leaderboardService.options,
   });
-  const packageId = Number(f.paket || options.data?.[0]?.package_id || 0);
+  const packageId = Number(f.paket || options.data?.[0]?.schedule_id || 0);
 
   useEffect(() => {
-    if (!f.paket && options.data?.[0]) setF({ paket: String(options.data[0].package_id) });
+    if (!f.paket && options.data?.[0]) setF({ paket: String(options.data[0].schedule_id) });
   }, [f.paket, options.data, setF]);
 
-  const params = { search: f.search, page: Number(f.page) };
+  const params = {
+    search: f.search,
+    page: Number(f.page),
+    scope: (f.scope === 'school' ? 'school' : 'all') as 'all' | 'school',
+  };
   const query = useQuery({
     queryKey: ['student', 'leaderboard', packageId, params],
     queryFn: () => leaderboardService.list(packageId, params),
@@ -104,10 +108,19 @@ export function LeaderboardContainer() {
       ),
     },
     {
-      key: 'region',
-      header: 'Wilayah',
+      key: 'class',
+      header: 'Kelas',
       hideOnMobile: true,
-      cell: (r) => `${r.city_name}, ${r.province_name}`,
+      cell: (r) => r.class_name ?? '-',
+    },
+    {
+      key: 'duration',
+      header: 'Waktu',
+      hideOnMobile: true,
+      cell: (r) =>
+        r.duration_seconds === null
+          ? '-'
+          : `${Math.floor(r.duration_seconds / 60)}m ${r.duration_seconds % 60}d`,
     },
     {
       key: 'score',
@@ -140,11 +153,21 @@ export function LeaderboardContainer() {
                 value={f.paket}
                 onChange={(paket) => setF({ paket })}
                 options={(options.data ?? []).map((o) => ({
-                  value: String(o.package_id),
+                  value: String(o.schedule_id),
                   label: o.title,
                 }))}
                 placeholder="Pilih tryout"
                 className="sm:w-80"
+              />
+              <SelectField
+                aria-label="Cakupan peringkat"
+                value={f.scope}
+                onChange={(scope) => setF({ scope })}
+                options={[
+                  { value: 'all', label: 'Semua sekolah' },
+                  { value: 'school', label: 'Sekolahku' },
+                ]}
+                className="sm:w-44"
               />
               {me && (
                 <div className="flex items-center gap-3 rounded-xl bg-primary/8 px-4 py-2">

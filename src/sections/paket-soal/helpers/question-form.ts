@@ -15,10 +15,8 @@ export interface StatementDraft {
 
 export interface QuestionForm {
   type: QuestionType;
-  categoryId: string;
   competencyId: string;
   subCompetencyId: string;
-  indicatorId: string;
   questionText: string;
   useStimulus: boolean;
   stimulus: string;
@@ -46,10 +44,8 @@ export const fromHtml = (html: string) =>
 
 export const emptyForm = (): QuestionForm => ({
   type: 1,
-  categoryId: '1',
   competencyId: '',
   subCompetencyId: '',
-  indicatorId: '',
   questionText: '',
   useStimulus: false,
   stimulus: '',
@@ -70,10 +66,8 @@ export const questionToForm = (q: Question): QuestionForm => {
   return {
     ...base,
     type: q.type_question_id,
-    categoryId: String(q.category_id),
     competencyId: q.competency_id ? String(q.competency_id) : '',
     subCompetencyId: q.sub_competency_id ? String(q.sub_competency_id) : '',
-    indicatorId: q.indicator_id ? String(q.indicator_id) : '',
     questionText: q.question_text,
     useStimulus: Boolean(q.text),
     stimulus: q.text,
@@ -89,7 +83,7 @@ export const questionToForm = (q: Question): QuestionForm => {
         ? 'salah'
         : 'benar',
     statements:
-      q.type_question_id === 4
+      q.type_question_id === 9
         ? byOrder.map((o) => ({
             text: fromHtml(o.option_text),
             value: o.is_true ? ('benar' as const) : ('salah' as const),
@@ -101,6 +95,7 @@ export const questionToForm = (q: Question): QuestionForm => {
 /** Validasi per tipe; kembalikan pesan error pertama atau ''. */
 export const validateForm = (f: QuestionForm): string => {
   if (!fromHtml(f.questionText) && !f.image) return 'Teks soal atau gambar wajib diisi';
+  if (!f.competencyId || !f.subCompetencyId) return 'Pilih kompetensi dan sub kompetensi soal';
   if (f.useStimulus && !fromHtml(f.stimulus)) return 'Isi teks stimulus atau matikan stimulus';
   switch (f.type) {
     case 1:
@@ -113,7 +108,7 @@ export const validateForm = (f: QuestionForm): string => {
       if (f.type === 2 && correct < 1) return 'Tandai minimal satu jawaban benar';
       return '';
     }
-    case 4:
+    case 9:
       if (f.statements.length < 2 || f.statements.some((s) => !s.text.trim()))
         return 'Isi semua pernyataan (minimal 2)';
       return '';
@@ -139,7 +134,7 @@ export const formToBody = (f: QuestionForm): QuestionBody => {
         { option_text: '<p>Salah</p>', is_true: f.trueFalse === 'salah', order: 1 },
       ];
       break;
-    case 4:
+    case 9:
       options = f.statements.map((s, i) => ({
         option_text: toHtml(s.text),
         is_true: s.value === 'benar',
@@ -157,9 +152,6 @@ export const formToBody = (f: QuestionForm): QuestionBody => {
     text_image: '',
     competency_id: f.competencyId ? Number(f.competencyId) : null,
     sub_competency_id: f.competencyId && f.subCompetencyId ? Number(f.subCompetencyId) : null,
-    indicator_id:
-      f.competencyId && f.subCompetencyId && f.indicatorId ? Number(f.indicatorId) : null,
-    category_id: Number(f.categoryId) || 1,
     options,
     attachments: f.image ? [{ type: 'image', path: f.image }] : [],
   };

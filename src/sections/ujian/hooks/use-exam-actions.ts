@@ -7,7 +7,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { SISWA_PATHS } from 'src/config/paths';
 
-import { errorMessage } from 'src/core/http';
+import { toApiError, errorMessage } from 'src/core/http';
 
 import { resetExamStores, useExamAnswerStore, useExamSessionStore } from 'src/state/exam-store';
 
@@ -19,7 +19,20 @@ import { buildPayload, flattenQuestions } from '../helpers/exam';
 const currentPayload = () => {
   const { session } = useExamSessionStore.getState();
   const { answers } = useExamAnswerStore.getState();
-  return { session, payload: buildPayload(flattenQuestions(session), answers) };
+  const questions = flattenQuestions(session);
+  return { session, questions, payload: buildPayload(questions, answers) };
+};
+
+export const finishedPath = (practiceId: number | string) =>
+  `${SISWA_PATHS.tryout}/selesai/${practiceId}`;
+
+/**
+ * Backend sudah mengumpulkan pengerjaan (dikumpulkan sebelumnya, batas pelanggaran, atau waktu
+ * habis + toleransi) → anggap selesai dan buka halaman hasil.
+ */
+export const isAlreadyFinished = (err: unknown) => {
+  const { status, message } = toApiError(err);
+  return status === 400 && /sudah selesai|dikumpulkan/i.test(message);
 };
 
 /**
@@ -34,23 +47,25 @@ export function useAutoSave() {
     mutationFn: ({
       practiceId,
       body,
+      questions,
     }: {
       practiceId: number;
       body: ReturnType<typeof buildPayload>;
-    }) => practiceService.saveAnswers(practiceId, body),
+      questions: ReturnType<typeof flattenQuestions>;
+    }) => practiceService.saveAnswers(practiceId, body, questions),
     onError: (err) => console.warn('Gagal sinkronisasi jawaban:', err),
   });
   const { mutate } = mutation;
 
   const save = useCallback(
     (force = false) => {
-      const { session, payload } = currentPayload();
+      const { session, questions, payload } = currentPayload();
       if (!session) return;
       // durasi berubah tiap detik — bandingkan tanpa durasi agar tidak mengirim ulang tanpa perubahan jawaban
       const signature = JSON.stringify(payload.map(({ duration_seconds: _d, ...rest }) => rest));
       if (!force && signature === lastSent.current) return;
       lastSent.current = signature;
-      mutate({ practiceId: session.practice_id, body: payload });
+      mutate({ practiceId: session.practice_id, body: payload, questions });
     },
     [mutate]
   );
@@ -64,26 +79,41 @@ export function useSubmitExam() {
   const qc = useQueryClient();
   return useMutation({
     mutationKey: ['exam', 'submit'],
-    mutationFn: () => {
-      const { session, payload } = currentPayload();
+    mutationFn: async () => {
+      const { session, questions, payload } = currentPayload();
       if (!session) throw new Error('Sesi tryout tidak ditemukan');
-      return practiceService.submit(session.practice_id, payload);
+      try {
+        return await practiceService.submit(session.practice_id, payload, questions);
+      } catch (err) {
+        if (isAlreadyFinished(err)) return { practice_id: session.practice_id, is_late: false };
+        throw err;
+      }
     },
     onSuccess: (res) => {
       resetExamStores();
       qc.invalidateQueries({ queryKey: ['student'] });
       if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
-      router.replace(`${SISWA_PATHS.tryout}/selesai/${res.practice_id}`);
+      router.replace(finishedPath(res.practice_id));
     },
     onError: (err) => toast.error(errorMessage(err)),
   });
 }
 
-/** Lapor pelanggaran ke server (fire-and-forget). */
+/**
+ * Lapor pelanggaran ke server. Bila backend sudah mengumpulkan otomatis (batas pelanggaran),
+ * hentikan ujian dan buka halaman hasil.
+ */
 export const reportViolation = (reason: string, count: number) => {
   const { session } = useExamSessionStore.getState();
   if (!session) return;
+  const { practice_id: practiceId } = session;
   practiceService
-    .violation(session.practice_id, { reason, count, occurred_at: new Date().toISOString() })
+    .violation(practiceId, { reason, count, occurred_at: new Date().toISOString() })
+    .then((res) => {
+      if (!res.auto_ended) return;
+      resetExamStores();
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+      window.location.replace(finishedPath(practiceId));
+    })
     .catch(() => {});
 };

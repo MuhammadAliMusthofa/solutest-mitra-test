@@ -19,6 +19,7 @@ import { analyticsService } from 'src/services/analytics';
 import { SelectField } from 'src/components/form/select-field';
 import { KpiCard } from 'src/components/data-display/kpi-card';
 import { ErrorState } from 'src/components/feedback/error-state';
+import { EmptyState } from 'src/components/feedback/empty-state';
 import { DataTable } from 'src/components/data-display/data-table';
 import { PageHeader } from 'src/components/data-display/page-header';
 import type { Column } from 'src/components/data-display/data-table';
@@ -138,6 +139,12 @@ export function RegionalContainer() {
         >
           {map.isError ? (
             <ErrorState error={map.error} onRetry={() => map.refetch()} />
+          ) : map.data && map.data.length === 0 ? (
+            <EmptyState
+              title="Lokasi sekolah belum tersedia"
+              description="Peta tampil setelah koordinat sekolah terisi (dari data circl atau menu Sekolah)."
+              icon="solar:map-point-linear"
+            />
           ) : (
             <RegionalMap locations={map.data ?? []} average={s?.national_average ?? 0} />
           )}

@@ -12,12 +12,11 @@ import { paketService, masterService } from 'src/services/paket';
 
 const KEY = 'paket';
 
-/** Master data; kompetensi butuh kelas & mapel → sub kompetensi butuh kompetensi → indikator butuh sub kompetensi. */
+/** Master Solutest; kompetensi butuh kelas & mapel paket → sub kompetensi butuh kompetensi. */
 export function useMasterData(filter?: {
   class_id?: number;
   subject_id?: number;
   competency_id?: number;
-  sub_competency_id?: number;
 }) {
   return {
     classes: useQuery({
@@ -28,11 +27,6 @@ export function useMasterData(filter?: {
     subjects: useQuery({
       queryKey: ['master', 'subjects'],
       queryFn: masterService.subjects,
-      staleTime: Infinity,
-    }),
-    categories: useQuery({
-      queryKey: ['master', 'categories'],
-      queryFn: masterService.categories,
       staleTime: Infinity,
     }),
     competencies: useQuery({
@@ -49,12 +43,6 @@ export function useMasterData(filter?: {
       queryKey: ['master', 'sub-competencies', filter?.competency_id],
       queryFn: () => masterService.subCompetencies({ competency_id: filter?.competency_id }),
       enabled: Boolean(filter?.competency_id),
-      staleTime: Infinity,
-    }),
-    indicators: useQuery({
-      queryKey: ['master', 'indicators', filter?.sub_competency_id],
-      queryFn: () => masterService.indicators({ sub_competency_id: filter?.sub_competency_id }),
-      enabled: Boolean(filter?.sub_competency_id),
       staleTime: Infinity,
     }),
   };

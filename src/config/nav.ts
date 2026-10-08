@@ -31,6 +31,90 @@ const A = panelPaths('admin');
 const G = panelPaths('guru');
 const S = SISWA_PATHS;
 
+/** Menu analitik & progres (be-solutest-mitra /analytics & /progress). */
+const ADMIN_ANALYTICS: NavSection = {
+  title: 'Analisis',
+  items: [
+    {
+      title: 'Dashboard Analitik',
+      path: A.analytics,
+      icon: 'solar:chart-2-linear',
+      accent: 2,
+      exact: true,
+    },
+    {
+      title: 'Sekolah & Siswa',
+      path: A.schoolRanking,
+      icon: 'solar:users-group-rounded-linear',
+      accent: 1,
+      children: [
+        { title: 'Peringkat Sekolah', path: A.schoolRanking },
+        { title: 'Detail Siswa', path: A.studentScores },
+      ],
+    },
+    { title: 'Analisis Regional', path: A.regional, icon: 'solar:map-point-linear', accent: 2 },
+    {
+      title: 'Progres Tryout',
+      path: A.progressList('sekolah'),
+      icon: 'solar:graph-up-linear',
+      accent: 4,
+      children: [
+        { title: 'Progres Sekolah', path: A.progressList('sekolah') },
+        { title: 'Progres Siswa', path: A.progressList('siswa') },
+      ],
+    },
+    {
+      title: 'Analisis Butir Soal',
+      path: A.itemAnalysis,
+      icon: 'solar:document-text-linear',
+      accent: 3,
+    },
+    {
+      title: 'Analisis Indikator',
+      path: A.indicator,
+      icon: 'solar:checklist-minimalistic-linear',
+      accent: 0,
+    },
+  ],
+};
+
+const GURU_ANALYTICS: NavSection = {
+  title: 'Analisis',
+  items: [
+    {
+      title: 'Dashboard Analitik',
+      path: G.analytics,
+      icon: 'solar:chart-2-linear',
+      accent: 2,
+      exact: true,
+    },
+    {
+      title: 'Detail Siswa',
+      path: G.studentScores,
+      icon: 'solar:users-group-rounded-linear',
+      accent: 1,
+    },
+    {
+      title: 'Progres Siswa',
+      path: G.progressList('siswa'),
+      icon: 'solar:graph-up-linear',
+      accent: 4,
+    },
+    {
+      title: 'Analisis Butir Soal',
+      path: G.itemAnalysis,
+      icon: 'solar:document-text-linear',
+      accent: 3,
+    },
+    {
+      title: 'Analisis Indikator',
+      path: G.indicator,
+      icon: 'solar:checklist-minimalistic-linear',
+      accent: 0,
+    },
+  ],
+};
+
 export const NAV: Record<Role, NavSection[]> = {
   [ROLES.admin]: [
     {
@@ -43,46 +127,15 @@ export const NAV: Record<Role, NavSection[]> = {
           accent: 0,
           exact: true,
         },
-      ],
-    },
-    {
-      title: 'Analisis',
-      items: [
         {
-          title: 'Sekolah & Siswa',
-          path: A.schoolRanking,
-          icon: 'solar:users-group-rounded-linear',
+          title: 'Hasil Tryout',
+          path: A.hasilTryout,
+          icon: 'solar:chart-square-linear',
           accent: 1,
-          children: [
-            { title: 'Peringkat Sekolah', path: A.schoolRanking },
-            { title: 'Detail Siswa', path: A.studentScores },
-          ],
-        },
-        { title: 'Analisis Regional', path: A.regional, icon: 'solar:map-point-linear', accent: 2 },
-        {
-          title: 'Progres Tryout',
-          path: A.progressList('sekolah'),
-          icon: 'solar:graph-up-linear',
-          accent: 4,
-          children: [
-            { title: 'Progres Sekolah', path: A.progressList('sekolah') },
-            { title: 'Progres Siswa', path: A.progressList('siswa') },
-          ],
-        },
-        {
-          title: 'Analisis Butir Soal',
-          path: A.itemAnalysis,
-          icon: 'solar:document-text-linear',
-          accent: 3,
-        },
-        {
-          title: 'Analisis Indikator',
-          path: A.indicator,
-          icon: 'solar:checklist-minimalistic-linear',
-          accent: 0,
         },
       ],
     },
+    ADMIN_ANALYTICS,
     {
       title: 'Kelola',
       items: [
@@ -93,8 +146,9 @@ export const NAV: Record<Role, NavSection[]> = {
           icon: 'solar:calendar-mark-linear',
           accent: 1,
         },
-        { title: 'Siswa', path: A.siswa, icon: 'solar:user-id-linear', accent: 3 },
+        { title: 'Sekolah', path: A.sekolah, icon: 'solar:buildings-2-linear', accent: 0 },
         { title: 'Guru', path: A.guru, icon: 'solar:square-academic-cap-linear', accent: 4 },
+        { title: 'Siswa', path: A.siswa, icon: 'solar:user-id-linear', accent: 3 },
       ],
     },
     {
@@ -115,48 +169,18 @@ export const NAV: Record<Role, NavSection[]> = {
       title: 'Beranda',
       items: [
         { title: 'Ringkasan', path: G.root, icon: 'solar:widget-5-linear', accent: 0, exact: true },
-      ],
-    },
-    {
-      title: 'Analisis',
-      items: [
         {
-          title: 'Detail Siswa',
-          path: G.studentScores,
-          icon: 'solar:users-group-rounded-linear',
+          title: 'Hasil Tryout',
+          path: G.hasilTryout,
+          icon: 'solar:chart-square-linear',
           accent: 1,
         },
-        {
-          title: 'Progres Siswa',
-          path: G.progressList('siswa'),
-          icon: 'solar:graph-up-linear',
-          accent: 4,
-        },
-        {
-          title: 'Analisis Butir Soal',
-          path: G.itemAnalysis,
-          icon: 'solar:document-text-linear',
-          accent: 3,
-        },
-        {
-          title: 'Analisis Indikator',
-          path: G.indicator,
-          icon: 'solar:checklist-minimalistic-linear',
-          accent: 0,
-        },
       ],
     },
+    GURU_ANALYTICS,
     {
       title: 'Kelola',
-      items: [
-        { title: 'Paket Soal', path: G.paketSoal, icon: 'solar:box-linear', accent: 2 },
-        {
-          title: 'Jadwal Tryout',
-          path: G.jadwalTryout,
-          icon: 'solar:calendar-mark-linear',
-          accent: 1,
-        },
-      ],
+      items: [{ title: 'Siswa', path: G.siswa, icon: 'solar:user-id-linear', accent: 3 }],
     },
     {
       title: 'Akun',
@@ -188,11 +212,11 @@ export const QUICK_LINKS: Partial<Record<Role, NavChild[]>> = {
   [ROLES.admin]: [
     { title: 'Jadwal Tryout', path: A.jadwalTryout },
     { title: 'Paket Soal', path: A.paketSoal },
-    { title: 'Siswa', path: A.siswa },
+    { title: 'Hasil Tryout', path: A.hasilTryout },
   ],
   [ROLES.guru]: [
-    { title: 'Jadwal Tryout', path: G.jadwalTryout },
-    { title: 'Paket Soal', path: G.paketSoal },
+    { title: 'Siswa', path: G.siswa },
+    { title: 'Hasil Tryout', path: G.hasilTryout },
   ],
 };
 

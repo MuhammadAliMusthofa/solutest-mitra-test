@@ -1,6 +1,6 @@
 'use client';
 
-import type { TryoutSchedule } from 'src/models/schedule';
+import type { TryoutSchedule, TryoutScheduleStatus } from 'src/models/schedule';
 
 import { toast } from 'sonner';
 import { useState } from 'react';
@@ -39,13 +39,19 @@ export function JadwalTryoutContainer() {
   const qc = useQueryClient();
   const { paths } = usePanel();
   const [f, setF] = useUrlState({ status: '', search: '', page: '1' });
-  const params = { status: f.status, search: f.search, page: Number(f.page), per_page: 10 };
+  const params = {
+    status: f.status as TryoutScheduleStatus | '',
+    search: f.search,
+    page: Number(f.page),
+    per_page: 10,
+  };
   const query = useQuery({
     queryKey: ['schedule', 'list', params],
     queryFn: () => scheduleService.list(params),
     placeholderData: keepPreviousData,
   });
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<TryoutSchedule | null>(null);
   const [created, setCreated] = useState<TryoutSchedule | null>(null);
   const [toDelete, setToDelete] = useState<TryoutSchedule | null>(null);
   const remove = useMutation({
@@ -102,7 +108,27 @@ export function JadwalTryoutContainer() {
       key: 'participants',
       header: 'Peserta',
       align: 'right',
-      cell: (s) => formatNumber(s.participants),
+      cell: (s) => (
+        <div className="text-right">
+          <p className="font-medium">{formatNumber(s.participants)}</p>
+          <p className="text-[11px] text-muted-foreground">
+            {formatNumber(s.total_submitted)} selesai
+          </p>
+        </div>
+      ),
+    },
+    {
+      key: 'target',
+      header: 'Sekolah',
+      hideOnMobile: true,
+      cell: (s) =>
+        s.is_all_schools ? (
+          <span className="text-xs text-muted-foreground">Semua sekolah</span>
+        ) : (
+          <span className="text-xs" title={s.schools.map((sc) => sc.name).join(', ')}>
+            {s.schools.length} sekolah
+          </span>
+        ),
     },
     {
       key: 'status',
@@ -112,6 +138,12 @@ export function JadwalTryoutContainer() {
           <StatusPill tone={SCHEDULE_STATUS[s.status].tone} icon={SCHEDULE_STATUS[s.status].icon}>
             {SCHEDULE_STATUS[s.status].label}
           </StatusPill>
+          {!s.is_published && (
+            <span className="inline-flex items-center gap-1 text-[11px] text-warning">
+              <Iconify icon="solar:eye-closed-linear" size={13} />
+              Draf
+            </span>
+          )}
           {s.is_cheat_detection && (
             <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
               <Iconify icon="solar:shield-check-linear" size={13} />
@@ -125,18 +157,32 @@ export function JadwalTryoutContainer() {
       key: 'actions',
       header: '',
       align: 'right',
-      cell: (s) =>
-        s.status === 'scheduled' ? (
+      cell: (s) => (
+        <div className="flex justify-end gap-1">
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label={`Hapus jadwal ${s.title}`}
-            onClick={() => setToDelete(s)}
-            className="hover:text-destructive"
+            aria-label={`Ubah jadwal ${s.title}`}
+            onClick={() => {
+              setEditing(s);
+              setOpen(true);
+            }}
           >
-            <Iconify icon="solar:trash-bin-trash-linear" size={17} />
+            <Iconify icon="solar:pen-linear" size={17} />
           </Button>
-        ) : null,
+          {s.total_in_progress === 0 && (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={`Hapus jadwal ${s.title}`}
+              onClick={() => setToDelete(s)}
+              className="hover:text-destructive"
+            >
+              <Iconify icon="solar:trash-bin-trash-linear" size={17} />
+            </Button>
+          )}
+        </div>
+      ),
     },
   ];
 
@@ -144,14 +190,19 @@ export function JadwalTryoutContainer() {
     <>
       <PageHeader
         title="Jadwal Tryout"
-        description="Tryout yang dijadwalkan otomatis tampil di beranda semua siswa mitra."
+        description="Tryout yang dijadwalkan tampil di beranda siswa sekolah sasaran."
         crumbs={[
           { label: 'Ringkasan', href: paths.root },
           { label: 'Kelola' },
           { label: 'Jadwal Tryout' },
         ]}
         actions={
-          <Button onClick={() => setOpen(true)}>
+          <Button
+            onClick={() => {
+              setEditing(null);
+              setOpen(true);
+            }}
+          >
             <Iconify icon="solar:calendar-add-linear" size={18} />
             Jadwalkan tryout
           </Button>
@@ -191,7 +242,7 @@ export function JadwalTryoutContainer() {
         </div>
       </SectionCard>
 
-      <ScheduleDialog open={open} onOpenChange={setOpen} onCreated={setCreated} />
+      <ScheduleDialog open={open} onOpenChange={setOpen} onCreated={setCreated} initial={editing} />
       <ConfirmDialog
         open={Boolean(created)}
         onOpenChange={(v) => !v && setCreated(null)}

@@ -15,7 +15,14 @@ const isBrowser = () => typeof window !== 'undefined';
 export const decodeToken = (token?: string | null): TokenClaims | null => {
   if (!token) return null;
   try {
-    return jwtDecode<TokenClaims>(token);
+    const claims = jwtDecode<TokenClaims>(token);
+    return {
+      ...claims,
+      // token lama (sebelum backend menambah nama & email ke klaim) tetap aman dibaca
+      full_name: claims.full_name ?? '',
+      email: claims.email ?? '',
+      school_ids: claims.school_id ? [claims.school_id] : [],
+    };
   } catch {
     return null;
   }

@@ -26,9 +26,9 @@ interface Props {
   className?: string;
 }
 
-const MAX_MB = 2;
+const MAX_MB = 10;
 
-/** Unggah gambar (PNG/JPG/WEBP/SVG, maks 2 MB) → URL; dengan pratinjau & hapus. */
+/** Unggah gambar (PNG/JPG/WEBP/GIF, maks 10 MB; SVG ditolak backend) → URL; dengan pratinjau & hapus. */
 export function ImageUploader({
   value,
   onChange,
@@ -77,7 +77,7 @@ export function ImageUploader({
           ref={inputRef}
           id={inputId}
           type="file"
-          accept="image/png,image/jpeg,image/webp,image/svg+xml"
+          accept="image/png,image/jpeg,image/webp,image/gif"
           className="sr-only"
           onChange={(e) => {
             pick(e.target.files?.[0]);

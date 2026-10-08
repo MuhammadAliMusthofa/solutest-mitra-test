@@ -1,28 +1,13 @@
 'use client';
 
-import type { UserProfile } from 'src/models/user';
+import { useQuery } from '@tanstack/react-query';
 
-import { z } from 'zod';
-import { toast } from 'sonner';
-import { useEffect } from 'react';
-import { useForm, useWatch } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-
-import { Input } from 'src/components/ui/input';
-import { Label } from 'src/components/ui/label';
-import { Button } from 'src/components/ui/button';
 import { Skeleton } from 'src/components/ui/skeleton';
-import { Textarea } from 'src/components/ui/textarea';
-import { Tabs, TabsList, TabsContent, TabsTrigger } from 'src/components/ui/tabs';
 
 import type { Role } from 'src/config/roles';
 import { ROLES, ROLE_LABEL } from 'src/config/roles';
 
-import { errorMessage, refreshToken } from 'src/core/http';
-
 import { useTenant } from 'src/hooks/use-tenant';
-import { useUrlState } from 'src/hooks/use-url-state';
 import { useCurrentUser } from 'src/hooks/use-session';
 
 import { formatLongDate } from 'src/utils/format';
@@ -31,218 +16,23 @@ import { profileService } from 'src/services/account';
 
 import { Iconify } from 'src/components/iconify/iconify';
 import { ErrorState } from 'src/components/feedback/error-state';
-import { ImageUploader } from 'src/components/form/image-uploader';
 import { UserAvatar } from 'src/components/data-display/user-avatar';
 import { PageHeader } from 'src/components/data-display/page-header';
 import { SectionCard } from 'src/components/data-display/section-card';
 
-const profileSchema = z.object({
-  full_name: z.string().trim().min(1, 'Nama wajib diisi'),
-  phone: z
-    .string()
-    .trim()
-    .regex(/^(\+?\d{8,15})?$/, 'Nomor HP 8–15 digit')
-    .optional(),
-  address: z.string().trim().max(200).optional(),
-  nisn: z
-    .string()
-    .trim()
-    .regex(/^(\d{10})?$/, 'NISN harus 10 digit')
-    .optional(),
-  school_name: z.string().trim().optional(),
-  class_name: z.string().trim().optional(),
-  image_profile: z.string().nullable().optional(),
-});
-
-const passwordSchema = z
-  .object({
-    current_password: z.string().min(1, 'Isi password saat ini'),
-    new_password: z.string().min(8, 'Minimal 8 karakter'),
-    confirm: z.string(),
-  })
-  .refine((v) => v.new_password === v.confirm, {
-    path: ['confirm'],
-    message: 'Konfirmasi password tidak sama',
-  });
-
-type ProfileValues = z.infer<typeof profileSchema>;
-type PasswordValues = z.infer<typeof passwordSchema>;
-
-function FieldError({ message }: { message?: string }) {
-  return message ? <p className="text-xs text-destructive">{message}</p> : null;
-}
-
-function EditProfileForm({ profile, isStudent }: { profile: UserProfile; isStudent: boolean }) {
-  const qc = useQueryClient();
-  const form = useForm<ProfileValues>({ resolver: zodResolver(profileSchema) });
-  const { errors, isDirty } = form.formState;
-  const image = useWatch({ control: form.control, name: 'image_profile' });
-
-  useEffect(() => {
-    form.reset({
-      full_name: profile.full_name,
-      phone: profile.phone ?? '',
-      address: profile.address ?? '',
-      nisn: profile.nisn ?? '',
-      school_name: profile.school_name ?? '',
-      class_name: profile.class_name ?? '',
-      image_profile: profile.image_profile,
-    });
-  }, [profile, form]);
-
-  const save = useMutation({
-    mutationFn: (v: ProfileValues) =>
-      profileService.update({
-        full_name: v.full_name,
-        phone: v.phone || null,
-        address: v.address || null,
-        image_profile: v.image_profile ?? null,
-        ...(isStudent
-          ? {
-              nisn: v.nisn || null,
-              school_name: v.school_name || null,
-              class_name: v.class_name || null,
-            }
-          : {}),
-      }),
-    onSuccess: (data) => {
-      qc.setQueryData(['profile', 'me'], data);
-      // perbarui klaim token (nama & foto di topbar/sidebar)
-      refreshToken();
-      toast.success('Profil diperbarui');
-    },
-    onError: (err) => toast.error(errorMessage(err)),
-  });
-
+function InfoRow({ label, value }: { label: string; value?: string | null }) {
   return (
-    <form onSubmit={form.handleSubmit((v) => save.mutate(v))} className="space-y-5" noValidate>
-      <div className="space-y-2">
-        <Label>Foto profil</Label>
-        <ImageUploader
-          shape="circle"
-          value={image ?? null}
-          onChange={(url) => form.setValue('image_profile', url, { shouldDirty: true })}
-          label="Unggah foto"
-        />
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="p-name">Nama lengkap</Label>
-          <Input
-            id="p-name"
-            {...form.register('full_name')}
-            aria-invalid={Boolean(errors.full_name)}
-          />
-          <FieldError message={errors.full_name?.message} />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="p-email">Email</Label>
-          <Input id="p-email" value={profile.email} disabled />
-          <p className="text-xs text-muted-foreground">Email tidak dapat diubah.</p>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="p-phone">No. HP</Label>
-          <Input
-            id="p-phone"
-            inputMode="tel"
-            {...form.register('phone')}
-            aria-invalid={Boolean(errors.phone)}
-          />
-          <FieldError message={errors.phone?.message} />
-        </div>
-        {isStudent && (
-          <>
-            <div className="space-y-2">
-              <Label htmlFor="p-nisn">NISN</Label>
-              <Input
-                id="p-nisn"
-                inputMode="numeric"
-                {...form.register('nisn')}
-                aria-invalid={Boolean(errors.nisn)}
-              />
-              <FieldError message={errors.nisn?.message} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="p-class">Kelas</Label>
-              <Input id="p-class" {...form.register('class_name')} />
-            </div>
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="p-school">Sekolah</Label>
-              <Input id="p-school" {...form.register('school_name')} />
-            </div>
-          </>
-        )}
-        <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="p-address">Alamat</Label>
-          <Textarea id="p-address" rows={3} {...form.register('address')} />
-        </div>
-      </div>
-      <div className="flex justify-end">
-        <Button type="submit" disabled={!isDirty || save.isPending}>
-          {save.isPending && <Iconify icon="svg-spinners:180-ring" size={16} />}
-          Simpan perubahan
-        </Button>
-      </div>
-    </form>
+    <div className="space-y-1">
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="text-sm font-medium">{value || '—'}</dd>
+    </div>
   );
 }
 
-function ChangePasswordForm() {
-  const form = useForm<PasswordValues>({
-    resolver: zodResolver(passwordSchema),
-    defaultValues: { current_password: '', new_password: '', confirm: '' },
-  });
-  const { errors } = form.formState;
-  const save = useMutation({
-    mutationFn: (v: PasswordValues) =>
-      profileService.changePassword({
-        current_password: v.current_password,
-        new_password: v.new_password,
-      }),
-    onSuccess: () => {
-      toast.success('Password berhasil diganti');
-      form.reset();
-    },
-    onError: (err) => toast.error(errorMessage(err)),
-  });
-  return (
-    <form
-      onSubmit={form.handleSubmit((v) => save.mutate(v))}
-      className="max-w-md space-y-4"
-      noValidate
-    >
-      {(
-        [
-          ['current_password', 'Password saat ini', 'current-password'],
-          ['new_password', 'Password baru', 'new-password'],
-          ['confirm', 'Ulangi password baru', 'new-password'],
-        ] as const
-      ).map(([name, label, auto]) => (
-        <div key={name} className="space-y-2">
-          <Label htmlFor={`pw-${name}`}>{label}</Label>
-          <Input
-            id={`pw-${name}`}
-            type="password"
-            autoComplete={auto}
-            {...form.register(name)}
-            aria-invalid={Boolean(errors[name])}
-          />
-          <FieldError message={errors[name]?.message} />
-        </div>
-      ))}
-      <Button type="submit" disabled={save.isPending}>
-        {save.isPending && <Iconify icon="svg-spinners:180-ring" size={16} />}
-        Ganti password
-      </Button>
-    </form>
-  );
-}
-
-/** Profil Saya — dipakai admin, guru, dan siswa (`?tab=edit|keamanan`). */
+/** Profil Saya — dipakai admin, guru, dan siswa. Data akun dikelola di Solutest pusat. */
 export function ProfileContainer({ homeHref }: { homeHref: string }) {
   const { branding } = useTenant();
   const role = useCurrentUser().user?.role as Role | undefined;
-  const [{ tab }, setUrl] = useUrlState({ tab: 'edit' });
   const query = useQuery({ queryKey: ['profile', 'me'], queryFn: profileService.me });
   const p = query.data;
   const isStudent = role === ROLES.siswa;
@@ -298,19 +88,25 @@ export function ProfileContainer({ homeHref }: { homeHref: string }) {
             </div>
           </section>
 
-          <SectionCard>
-            <Tabs value={tab} onValueChange={(v) => setUrl({ tab: v })} className="gap-5">
-              <TabsList>
-                <TabsTrigger value="edit">Ubah profil</TabsTrigger>
-                <TabsTrigger value="keamanan">Keamanan</TabsTrigger>
-              </TabsList>
-              <TabsContent value="edit">
-                <EditProfileForm profile={p} isStudent={isStudent} />
-              </TabsContent>
-              <TabsContent value="keamanan">
-                <ChangePasswordForm />
-              </TabsContent>
-            </Tabs>
+          <SectionCard title="Data akun">
+            <dl className="grid gap-5 sm:grid-cols-2">
+              <InfoRow label="Nama lengkap" value={p.full_name} />
+              <InfoRow label="Email" value={p.email} />
+              <InfoRow label="No. HP" value={p.phone} />
+              <InfoRow label="Peran" value={role ? ROLE_LABEL[role] : ''} />
+              {role !== ROLES.admin && <InfoRow label="Sekolah" value={p.school_name} />}
+              {isStudent && (
+                <>
+                  <InfoRow label="NISN" value={p.nisn} />
+                  <InfoRow label="Kelas" value={p.class_name} />
+                </>
+              )}
+            </dl>
+            <p className="mt-6 flex items-start gap-2 rounded-lg bg-muted/50 px-3 py-2.5 text-sm text-muted-foreground">
+              <Iconify icon="solar:info-circle-linear" size={18} className="mt-0.5 shrink-0" />
+              Nama, email, dan password memakai akun Solutest. Ubah lewat solutest.id; sekolah,
+              NISN, dan kelas diatur oleh admin mitra.
+            </p>
           </SectionCard>
         </div>
       )}

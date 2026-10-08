@@ -1,20 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { toast } from 'sonner';
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 
-import { Input } from 'src/components/ui/input';
-import { Label } from 'src/components/ui/label';
 import { Button } from 'src/components/ui/button';
 import { Checkbox } from 'src/components/ui/checkbox';
 import { Skeleton } from 'src/components/ui/skeleton';
 
 import { SISWA_PATHS } from 'src/config/paths';
-
-import { errorMessage } from 'src/core/http';
 
 import { formatDateTime } from 'src/utils/format';
 
@@ -36,6 +31,7 @@ const RULES = (cheat: boolean, max: number) => [
   'Pastikan koneksi internet stabil. Jawaban tersimpan otomatis setiap berpindah soal.',
   'Waktu berjalan sejak tombol "Mulai" ditekan dan tidak berhenti walau halaman ditutup.',
   'Jika keluar di tengah jalan, lanjutkan lewat kartu "Tryout belum selesai" di beranda.',
+  'Waktu habis atau browser ditutup tanpa mengumpulkan → jawaban tersimpan dikumpulkan otomatis.',
   'Gunakan tombol "Ragu-ragu" untuk menandai soal yang ingin diperiksa lagi.',
   ...(cheat
     ? [
@@ -49,57 +45,17 @@ const RULES = (cheat: boolean, max: number) => [
 export function TryoutDetailContainer() {
   const { code: raw } = useParams<{ code: string }>();
   const code = decodeURIComponent(raw);
-  const qc = useQueryClient();
   const detail = useTryoutDetail(code);
   const profile = useQuery({ queryKey: ['profile', 'me'], queryFn: profileService.me });
   const { start, resume, loading } = useExamFlow();
   const [agree, setAgree] = useState(false);
-  const [bio, setBio] = useState({ full_name: '', nisn: '', school_name: '', class_name: '' });
   const d = detail.data;
+  const p = profile.data;
 
-  const [loadedProfile, setLoadedProfile] = useState(profile.data);
-  if (profile.data && profile.data !== loadedProfile) {
-    setLoadedProfile(profile.data);
-    setBio({
-      full_name: profile.data.full_name,
-      nisn: profile.data.nisn ?? '',
-      school_name: profile.data.school_name ?? '',
-      class_name: profile.data.class_name ?? '',
-    });
-  }
-
-  const saveBio = useMutation({
-    mutationFn: () =>
-      profileService.update({
-        full_name: bio.full_name.trim(),
-        nisn: bio.nisn.trim() || null,
-        school_name: bio.school_name.trim() || null,
-        class_name: bio.class_name.trim() || null,
-      }),
-    onSuccess: (data) => qc.setQueryData(['profile', 'me'], data),
-  });
-
-  const bioValid =
-    bio.full_name.trim() && bio.school_name.trim() && (!bio.nisn || /^\d{10}$/.test(bio.nisn));
-  const bioDirty =
-    profile.data &&
-    (bio.full_name !== profile.data.full_name ||
-      bio.nisn !== (profile.data.nisn ?? '') ||
-      bio.school_name !== (profile.data.school_name ?? '') ||
-      bio.class_name !== (profile.data.class_name ?? ''));
-
-  const onStart = async () => {
+  const onStart = () => {
     if (!d) return;
     // fullscreen harus diminta langsung dari gesture klik (sebelum await)
     enterFullscreen();
-    if (bioDirty) {
-      try {
-        await saveBio.mutateAsync();
-      } catch (err) {
-        toast.error(errorMessage(err));
-        return;
-      }
-    }
     start(d.code);
   };
 
@@ -145,7 +101,18 @@ export function TryoutDetailContainer() {
               <dl className="mt-5 grid gap-3 sm:grid-cols-2">
                 {[
                   ['solar:hashtag-linear', 'Kode', d.code],
-                  ['solar:book-2-linear', 'Mapel', `${d.subject_name} · Kelas ${d.class_name}`],
+                  [
+                    'solar:book-2-linear',
+                    'Mapel',
+                    [d.subject_name, d.class_name && `Kelas ${d.class_name}`]
+                      .filter(Boolean)
+                      .join(' · ') || '-',
+                  ],
+                  [
+                    'solar:restart-linear',
+                    'Kesempatan',
+                    `${d.attempts_used}/${d.max_attempts} kali dipakai`,
+                  ],
                   ['solar:document-text-linear', 'Jumlah soal', `${d.total_question} soal`],
                   ['solar:clock-circle-linear', 'Durasi', `${d.duration} menit`],
                   ['solar:calendar-linear', 'Dibuka', formatDateTime(d.start_date)],
@@ -174,7 +141,7 @@ export function TryoutDetailContainer() {
             {d.is_done ? (
               <SectionCard title="Sudah dikerjakan">
                 <p className="text-sm text-muted-foreground">
-                  Kamu sudah mengumpulkan tryout ini. Lihat hasilnya di riwayat.
+                  Kesempatan mengerjakan tryout ini sudah habis. Lihat hasilnya di riwayat.
                 </p>
                 <Button className="mt-4 w-full" asChild>
                   <Link href={SISWA_PATHS.history}>Buka riwayat</Link>
@@ -208,45 +175,25 @@ export function TryoutDetailContainer() {
                   <Skeleton className="h-56 w-full rounded-xl" />
                 ) : (
                   <div className="space-y-3">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="b-name">Nama lengkap</Label>
-                      <Input
-                        id="b-name"
-                        value={bio.full_name}
-                        onChange={(e) => setBio((b) => ({ ...b, full_name: e.target.value }))}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="b-nisn">NISN (opsional)</Label>
-                      <Input
-                        id="b-nisn"
-                        inputMode="numeric"
-                        value={bio.nisn}
-                        onChange={(e) =>
-                          setBio((b) => ({
-                            ...b,
-                            nisn: e.target.value.replace(/\D/g, '').slice(0, 10),
-                          }))
-                        }
-                        aria-invalid={Boolean(bio.nisn) && !/^\d{10}$/.test(bio.nisn)}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="b-school">Sekolah</Label>
-                      <Input
-                        id="b-school"
-                        value={bio.school_name}
-                        onChange={(e) => setBio((b) => ({ ...b, school_name: e.target.value }))}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="b-class">Kelas</Label>
-                      <Input
-                        id="b-class"
-                        value={bio.class_name}
-                        onChange={(e) => setBio((b) => ({ ...b, class_name: e.target.value }))}
-                      />
-                    </div>
+                    <dl className="space-y-2 text-sm">
+                      {[
+                        ['Nama', p?.full_name],
+                        ['NISN', p?.nisn],
+                        ['Sekolah', p?.school_name],
+                        ['Kelas', p?.class_name],
+                      ].map(([k, v]) => (
+                        <div
+                          key={k}
+                          className="flex justify-between gap-3 rounded-lg bg-muted/50 px-3 py-2"
+                        >
+                          <dt className="text-muted-foreground">{k}</dt>
+                          <dd className="text-right font-medium">{v || '-'}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                    <p className="text-xs text-muted-foreground">
+                      Data salah? Hubungi guru atau admin sekolahmu.
+                    </p>
                     <label className="flex items-start gap-2 pt-2 text-sm">
                       <Checkbox
                         checked={agree}
@@ -266,15 +213,11 @@ export function TryoutDetailContainer() {
                       className="w-full"
                       size="lg"
                       disabled={
-                        d.status !== 'ongoing' ||
-                        !agree ||
-                        !bioValid ||
-                        loading !== null ||
-                        saveBio.isPending
+                        d.status !== 'ongoing' || !d.can_start || !agree || loading !== null
                       }
                       onClick={onStart}
                     >
-                      {loading !== null || saveBio.isPending ? (
+                      {loading !== null ? (
                         <Iconify icon="svg-spinners:180-ring" size={18} />
                       ) : (
                         <Iconify icon="solar:play-linear" size={18} />

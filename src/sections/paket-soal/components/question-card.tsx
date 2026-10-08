@@ -23,7 +23,7 @@ const LETTERS = 'ABCDEFGHIJ';
 
 /** Kunci jawaban ringkas per tipe soal. */
 function AnswerKey({ q }: { q: Question }) {
-  if (q.type_question_id === 4) {
+  if (q.type_question_id === 9) {
     return (
       <div className="overflow-x-auto rounded-lg ring-1 ring-border">
         <table className="w-full text-sm">
@@ -97,6 +97,7 @@ export function QuestionCard({
   onDelete,
   selected,
   onSelectedChange,
+  locked = false,
 }: {
   q: Question;
   no: number;
@@ -105,6 +106,8 @@ export function QuestionCard({
   /** dipilih untuk hapus massal */
   selected: boolean;
   onSelectedChange: (selected: boolean) => void;
+  /** paket sudah dikerjakan siswa → soal hanya bisa dilihat */
+  locked?: boolean;
 }) {
   return (
     <article
@@ -114,20 +117,22 @@ export function QuestionCard({
       )}
     >
       <header className="flex flex-wrap items-center gap-2">
-        <Checkbox
-          checked={selected}
-          onCheckedChange={(v) => onSelectedChange(Boolean(v))}
-          aria-label={`Pilih soal ${no}`}
-          className="mr-1"
-        />
+        {!locked && (
+          <Checkbox
+            checked={selected}
+            onCheckedChange={(v) => onSelectedChange(Boolean(v))}
+            aria-label={`Pilih soal ${no}`}
+            className="mr-1"
+          />
+        )}
         <span className="grid size-8 place-items-center rounded-lg bg-primary/10 text-sm font-semibold text-primary">
           {no}
         </span>
         <StatusPill tone="secondary">{questionTypeName(q.type_question_id)}</StatusPill>
-        <span className="text-xs text-muted-foreground">
-          {q.code} · {q.category_name}
-        </span>
-        <div className="ml-auto flex gap-1">
+        {q.source_question_id && (
+          <span className="text-xs text-muted-foreground">Dari Solutest</span>
+        )}
+        <div className={cn('ml-auto flex gap-1', locked && 'hidden')}>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button variant="ghost" size="icon-sm" asChild>
@@ -163,12 +168,6 @@ export function QuestionCard({
             <>
               <dt className="font-semibold text-muted-foreground">Sub kompetensi</dt>
               <dd>{q.sub_competency_name}</dd>
-            </>
-          )}
-          {q.indicator_name && (
-            <>
-              <dt className="font-semibold text-muted-foreground">Indikator</dt>
-              <dd>{q.indicator_name}</dd>
             </>
           )}
         </dl>
