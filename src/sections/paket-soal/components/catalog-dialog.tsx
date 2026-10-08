@@ -9,6 +9,7 @@ import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tansta
 import { Button } from 'src/components/ui/button';
 import {
   Dialog,
+  DialogIcon,
   DialogTitle,
   DialogHeader,
   DialogContent,
@@ -72,6 +73,9 @@ export function CatalogDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
+          <DialogIcon>
+            <Iconify icon="solar:import-linear" size={24} />
+          </DialogIcon>
           <DialogTitle>Ambil paket dari Solutest</DialogTitle>
           <DialogDescription>
             Paket disalin ke mitra beserta soalnya, lalu bisa diedit dan dijadwalkan. Paket asli di

@@ -1,17 +1,8 @@
-import type { Metadata } from 'next';
+import { redirect } from 'next/navigation';
 
-import { Suspense } from 'react';
+import { SISWA_PATHS } from 'src/config/paths';
 
-import { PageLoader } from 'src/components/feedback/page-loader';
-
-import { ExplanationContainer } from 'src/sections/tryout-siswa/container/history-containers';
-
-export const metadata: Metadata = { title: 'Pembahasan' };
-
+// Pembahasan tryout bersifat rahasia → tidak ditampilkan ke siswa; tautan lama diarahkan ke riwayat.
 export default function Page() {
-  return (
-    <Suspense fallback={<PageLoader />}>
-      <ExplanationContainer />
-    </Suspense>
-  );
+  redirect(SISWA_PATHS.history);
 }

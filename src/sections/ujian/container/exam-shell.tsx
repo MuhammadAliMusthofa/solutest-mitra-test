@@ -26,13 +26,7 @@ import { ExamHeader } from '../components/exam-header';
 import { useCountdown } from '../hooks/use-exam-timers';
 import { enterFullscreen } from '../hooks/use-exam-flow';
 import { useCheatDetection } from '../hooks/use-cheat-detection';
-import { useExamNavigation } from '../hooks/use-exam-navigation';
-import {
-  decodeNumber,
-  computeDeadline,
-  flattenQuestions,
-  normalizeSavedAnswers,
-} from '../helpers/exam';
+import { computeDeadline, flattenQuestions, normalizeSavedAnswers } from '../helpers/exam';
 import {
   useAutoSave,
   finishedPath,
@@ -104,11 +98,9 @@ export function ExamShell({ children }: { children: ReactNode }) {
   const params = useParams<{ practiceId: string; nomor?: string }>();
   const pathname = usePathname();
   const practiceId = Number(params.practiceId);
-  const current = params.nomor ? decodeNumber(params.nomor) : undefined;
   const hydrated = useExamHydration();
   const { session, resume } = useEnsureSession(practiceId, hydrated);
   const clearAnswers = useExamAnswerStore((s) => s.clearAnswers);
-  const { goTo } = useExamNavigation();
   const { save } = useAutoSave();
   const submit = useSubmitExam();
   const { expired } = useCountdown(session?.deadline);
@@ -195,8 +187,8 @@ export function ExamShell({ children }: { children: ReactNode }) {
   const onConfirmPage = pathname.endsWith('/konfirmasi');
 
   return (
-    <div className="no-select min-h-dvh bg-page">
-      <ExamHeader session={session} current={onConfirmPage ? undefined : current} onPick={goTo} />
+    <div className="no-select min-h-dvh bg-card">
+      {!onConfirmPage && <ExamHeader session={session} />}
       {children}
 
       {/* Pelanggaran deteksi kecurangan */}

@@ -15,6 +15,7 @@ import { Checkbox } from 'src/components/ui/checkbox';
 import { Textarea } from 'src/components/ui/textarea';
 import {
   Dialog,
+  DialogIcon,
   DialogTitle,
   DialogFooter,
   DialogHeader,
@@ -126,6 +127,9 @@ export function ScheduleDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
+          <DialogIcon>
+            <Iconify icon="solar:calendar-add-linear" size={24} />
+          </DialogIcon>
           <DialogTitle>{editing ? `Ubah jadwal ${initial?.code}` : 'Jadwalkan tryout'}</DialogTitle>
           <DialogDescription>
             Tryout tampil di beranda siswa sekolah sasaran dan bisa dibuka dengan kode.
@@ -250,7 +254,7 @@ export function ScheduleDialog({
           </Field>
           <label
             htmlFor="s-publish"
-            className="flex items-center justify-between gap-3 rounded-lg bg-muted/50 px-4 py-3"
+            className="flex items-center justify-between gap-3 rounded-2xl bg-muted/60 px-4 py-3.5"
           >
             <span>
               <span className="block text-sm font-medium">Terbitkan sekarang</span>

@@ -256,7 +256,7 @@ export function JadwalTryoutContainer() {
           setCreated(null);
         }}
       >
-        <p className="rounded-xl bg-primary/8 py-4 text-center font-mono text-2xl font-semibold tracking-wider text-primary">
+        <p className="rounded-xl bg-primary/8 py-4 text-center font-mono text-2xl font-bold tracking-wider text-primary">
           {created?.code}
         </p>
       </ConfirmDialog>

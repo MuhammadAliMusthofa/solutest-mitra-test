@@ -22,10 +22,14 @@ export function ErrorState({ error, title = 'Gagal memuat data', onRetry, classN
       role="alert"
       className={cn('flex flex-col items-center gap-2 px-6 py-10 text-center', className)}
     >
-      <span className="mb-1 grid size-12 place-items-center rounded-full bg-destructive/10 text-destructive">
-        <Iconify icon="solar:danger-triangle-linear" size={24} />
+      <span className="relative mb-2 grid size-16 place-items-center rounded-2xl bg-destructive/10 text-destructive">
+        <span
+          aria-hidden
+          className="absolute -inset-2.5 rounded-[1.4rem] ring-1 ring-destructive/10"
+        />
+        <Iconify icon="solar:danger-triangle-linear" size={28} />
       </span>
-      <p className="font-semibold">{title}</p>
+      <p className="text-base font-bold">{title}</p>
       {error ? (
         <p className="max-w-md text-sm text-muted-foreground">{errorMessage(error)}</p>
       ) : null}

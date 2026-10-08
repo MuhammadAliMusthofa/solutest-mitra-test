@@ -46,7 +46,6 @@ export const SISWA_PATHS = {
   tryout: `${SISWA}/tryout`,
   tryoutDetail: (code: string) => `${SISWA}/tryout/${encodeURIComponent(code)}`,
   history: `${SISWA}/riwayat`,
-  explanation: (practiceId: number | string) => `${SISWA}/riwayat/${practiceId}/pembahasan`,
   report: (practiceId: number | string) => `${SISWA}/riwayat/${practiceId}/laporan`,
   leaderboard: `${SISWA}/leaderboard`,
   profile: `${SISWA}/profil`,

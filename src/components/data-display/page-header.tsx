@@ -21,39 +21,51 @@ interface Props {
   className?: string;
 }
 
-/** Judul halaman + breadcrumb + aksi (gaya kartu Spike). */
+/** Judul halaman + breadcrumb + aksi — kartu bertint primary ala breadcrumb card Spike. */
 export function PageHeader({ title, description, crumbs, actions, backHref, className }: Props) {
   return (
     <div
       className={cn(
-        'mb-6 flex flex-col gap-4 rounded-card bg-card px-5 py-5 shadow-card sm:flex-row sm:items-center sm:justify-between md:px-6',
+        'deco-rings mb-6 flex flex-col gap-4 rounded-card bg-[color-mix(in_srgb,var(--primary)_9%,var(--card))] px-5 py-6 sm:flex-row sm:items-center sm:justify-between md:px-7',
         className
       )}
     >
-      <div className="flex min-w-0 items-start gap-3">
+      <div className="flex min-w-0 items-start gap-3.5">
         {backHref && (
           <Link
             href={backHref}
             aria-label="Kembali"
-            className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-full bg-muted text-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+            className="mt-0.5 grid size-10 shrink-0 place-items-center rounded-full bg-card text-foreground shadow-card transition-[color,background-color,transform] duration-200 hover:-translate-x-0.5 hover:bg-primary hover:text-primary-foreground"
           >
             <Iconify icon="solar:arrow-left-linear" size={18} />
           </Link>
         )}
         <div className="min-w-0">
-          <h1 className="text-xl font-semibold md:text-[1.4rem]">{title}</h1>
+          <h1 className="text-xl font-bold md:text-[1.5rem]">{title}</h1>
           {crumbs && crumbs.length > 0 && (
-            <nav aria-label="Breadcrumb" className="mt-1">
-              <ol className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
+            <nav aria-label="Breadcrumb" className="mt-1.5">
+              <ol className="flex flex-wrap items-center gap-1 text-sm text-foreground/60">
                 {crumbs.map((c, i) => (
-                  <li key={`${c.label}-${i}`} className="flex items-center gap-1.5">
-                    {i > 0 && <span aria-hidden>•</span>}
+                  <li key={`${c.label}-${i}`} className="flex items-center gap-1">
+                    {i > 0 && (
+                      <Iconify
+                        icon="solar:alt-arrow-right-linear"
+                        size={14}
+                        className="text-foreground/35"
+                      />
+                    )}
+                    {i === 0 && (
+                      <Iconify icon="solar:home-smile-angle-linear" size={16} className="mr-0.5" />
+                    )}
                     {c.href ? (
-                      <Link href={c.href} className="hover:text-primary">
+                      <Link href={c.href} className="transition-colors hover:text-primary">
                         {c.label}
                       </Link>
                     ) : (
-                      <span aria-current={i === crumbs.length - 1 ? 'page' : undefined}>
+                      <span
+                        aria-current={i === crumbs.length - 1 ? 'page' : undefined}
+                        className={cn(i === crumbs.length - 1 && 'font-semibold text-primary')}
+                      >
                         {c.label}
                       </span>
                     )}
@@ -62,10 +74,14 @@ export function PageHeader({ title, description, crumbs, actions, backHref, clas
               </ol>
             </nav>
           )}
-          {description && <p className="mt-1.5 text-sm text-muted-foreground">{description}</p>}
+          {description && (
+            <p className="mt-2 max-w-[68ch] text-sm leading-relaxed text-foreground/65">
+              {description}
+            </p>
+          )}
         </div>
       </div>
-      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+      {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
     </div>
   );
 }

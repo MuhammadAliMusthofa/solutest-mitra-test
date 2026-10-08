@@ -21,10 +21,10 @@ import { BrandMark } from './brand-mark';
 import { AccountMenu } from './account-menu';
 
 const PILL_ACCENTS = [
-  'data-[active=true]:bg-primary/10 data-[active=true]:text-primary hover:bg-primary/10 hover:text-primary',
-  'data-[active=true]:bg-brand-accent/22 data-[active=true]:text-[color-mix(in_oklab,var(--brand-accent)_45%,black)] hover:bg-brand-accent/22',
-  'data-[active=true]:bg-secondary/14 data-[active=true]:text-[color-mix(in_oklab,var(--secondary)_80%,black)] hover:bg-secondary/14',
-  'data-[active=true]:bg-info/12 data-[active=true]:text-info hover:bg-info/12',
+  'hover:bg-primary/10 hover:text-primary',
+  'hover:bg-brand-accent/22 hover:text-accent-ink',
+  'hover:bg-secondary/14 hover:text-secondary-ink',
+  'hover:bg-info/12 hover:text-info',
 ];
 
 /** Shell siswa: hanya navbar (tanpa sidebar) dengan logo & nama mitra. */
@@ -77,7 +77,8 @@ function NavPill({ item, active }: { item: NavItem; active: boolean }) {
       data-active={active}
       aria-current={active ? 'page' : undefined}
       className={cn(
-        'flex h-10 shrink-0 items-center gap-2 rounded-full px-4 text-[0.92rem] font-medium whitespace-nowrap transition-colors',
+        'flex h-10 shrink-0 items-center gap-2 rounded-full px-4 text-[0.92rem] font-semibold whitespace-nowrap text-foreground/80 transition-[background-color,color,box-shadow] duration-150',
+        'data-[active=true]:bg-primary data-[active=true]:text-primary-foreground data-[active=true]:shadow-btn',
         PILL_ACCENTS[item.accent % PILL_ACCENTS.length]
       )}
     >

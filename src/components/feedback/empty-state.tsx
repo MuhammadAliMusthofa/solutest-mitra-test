@@ -26,10 +26,11 @@ export function EmptyState({
         className
       )}
     >
-      <span className="mb-1 grid size-14 place-items-center rounded-full bg-primary/8 text-primary">
-        <Iconify icon={icon} size={28} />
+      <span className="relative mb-2 grid size-16 place-items-center rounded-2xl bg-primary/10 text-primary">
+        <span aria-hidden className="absolute -inset-2.5 rounded-[1.4rem] ring-1 ring-primary/10" />
+        <Iconify icon={icon} size={30} />
       </span>
-      <p className="font-semibold text-foreground">{title}</p>
+      <p className="text-base font-bold text-foreground">{title}</p>
       {description && <p className="max-w-sm text-sm text-muted-foreground">{description}</p>}
       {action && <div className="mt-3">{action}</div>}
     </div>

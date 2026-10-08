@@ -43,7 +43,7 @@ export function LoginView() {
             />
           </span>
           <div>
-            <p className="text-lg font-semibold">{branding.name}</p>
+            <p className="text-lg font-bold">{branding.name}</p>
             <p className="text-sm opacity-80">bersama Solutest</p>
           </div>
         </div>
@@ -85,7 +85,7 @@ export function LoginView() {
           </div>
 
           <div>
-            <h2 className="text-2xl font-semibold">Masuk ke akun Anda</h2>
+            <h2 className="text-2xl font-bold">Masuk ke akun Anda</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               Untuk admin mitra, guru, dan siswa {branding.short_name || branding.name}.
             </p>

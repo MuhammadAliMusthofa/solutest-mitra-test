@@ -70,7 +70,7 @@ export function DonutChart({
         </ChartContainer>
         {(centerValue || centerLabel) && (
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
-            {centerValue && <span className="text-2xl font-semibold">{centerValue}</span>}
+            {centerValue && <span className="text-2xl font-bold">{centerValue}</span>}
             {centerLabel && <span className="text-xs text-muted-foreground">{centerLabel}</span>}
           </div>
         )}

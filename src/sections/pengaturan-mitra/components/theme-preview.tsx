@@ -42,9 +42,7 @@ export function ThemePreview({ theme, name, shortName, logo }: Props) {
       style={style}
       className="space-y-4 rounded-card bg-page p-4 ring-1 ring-border"
     >
-      <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-        Panel admin & guru
-      </p>
+      <p className="text-sm font-bold">Panel admin & guru</p>
       <div className="flex gap-3">
         <div className="w-40 shrink-0 space-y-1 rounded-2xl bg-sidebar p-3 text-sidebar-foreground shadow-card">
           <div className="mb-3">{brand}</div>
@@ -104,9 +102,7 @@ export function ThemePreview({ theme, name, shortName, logo }: Props) {
         </div>
       </div>
 
-      <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-        Navbar siswa
-      </p>
+      <p className="text-sm font-bold">Navbar siswa</p>
       <div className="flex items-center gap-3 rounded-2xl bg-card px-3 py-2 shadow-card">
         {brand}
         <div className="ml-auto flex gap-1">

@@ -24,7 +24,7 @@ export function ReviewAnswer({ q, mine = 'Jawabanmu' }: { q: ExplanationQuestion
     return (
       <div className="overflow-x-auto rounded-lg ring-1 ring-border">
         <table className="w-full text-sm">
-          <thead className="bg-muted/60 text-left text-xs font-semibold text-muted-foreground uppercase">
+          <thead className="bg-primary/[0.035] text-left text-xs font-semibold text-foreground">
             <tr>
               <th scope="col" className="px-3 py-2">
                 Pernyataan

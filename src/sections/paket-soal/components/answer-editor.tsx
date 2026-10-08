@@ -32,16 +32,17 @@ export function AnswerEditor({ form, update }: Props) {
         ? update({ choices: form.choices.map((c, idx) => ({ ...c, correct: idx === i })) })
         : setChoice(i, { correct: value });
     return (
-      <div className="space-y-2">
-        <p className="text-xs text-muted-foreground">
+      <div className="space-y-2.5">
+        <p className="mb-1 inline-flex items-center gap-1.5 rounded-full bg-info/10 px-3 py-1.5 text-xs font-semibold text-info">
+          <Iconify icon="solar:info-circle-linear" size={14} />
           {type === 1 ? 'Pilih satu jawaban benar.' : 'Centang semua jawaban benar.'}
         </p>
         {form.choices.map((c, i) => (
           <div
             key={i}
             className={cn(
-              'flex items-center gap-2 rounded-lg p-2 ring-1 ring-border',
-              c.correct && 'bg-success/6 ring-success/40'
+              'flex items-center gap-2.5 rounded-2xl p-2 pl-3 ring-1 ring-border transition-colors',
+              c.correct && 'bg-success/[0.07] ring-success/45'
             )}
           >
             {type === 1 ? (
@@ -60,13 +61,26 @@ export function AnswerEditor({ form, update }: Props) {
                 aria-label={`Tandai ${LETTERS[i]} benar`}
               />
             )}
-            <span className="w-5 text-sm font-semibold">{LETTERS[i]}</span>
+            <span
+              className={cn(
+                'grid size-9 shrink-0 place-items-center rounded-xl text-sm font-bold transition-colors',
+                c.correct ? 'bg-success text-white' : 'bg-muted text-foreground/70'
+              )}
+            >
+              {LETTERS[i]}
+            </span>
             <Input
               value={c.text}
               onChange={(e) => setChoice(i, { text: e.target.value })}
               placeholder={`Pilihan ${LETTERS[i]}`}
-              className="flex-1"
+              className="flex-1 bg-card"
             />
+            {c.correct && (
+              <span className="hidden items-center gap-1 rounded-full bg-success px-2.5 py-1 text-[0.7rem] font-bold text-white sm:inline-flex">
+                <Iconify icon="solar:check-circle-bold" size={13} />
+                Kunci
+              </span>
+            )}
             <Button
               type="button"
               variant="ghost"
@@ -80,13 +94,13 @@ export function AnswerEditor({ form, update }: Props) {
                 update({ choices: next });
               }}
             >
-              <Iconify icon="solar:close-circle-linear" size={18} />
+              <Iconify icon="solar:trash-bin-minimalistic-linear" size={18} />
             </Button>
           </div>
         ))}
         <Button
           type="button"
-          variant="outline"
+          variant="soft"
           size="sm"
           disabled={form.choices.length >= MAX_CHOICES}
           onClick={() => update({ choices: [...form.choices, { text: '', correct: false }] })}
@@ -108,10 +122,10 @@ export function AnswerEditor({ form, update }: Props) {
         {(['benar', 'salah'] as const).map((v) => (
           <label
             key={v}
-            className="flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2.5 ring-1 ring-border has-[[data-state=checked]]:bg-success/6 has-[[data-state=checked]]:ring-success/40"
+            className="flex min-w-36 cursor-pointer items-center gap-2.5 rounded-2xl px-4 py-3.5 ring-1 ring-border transition-colors hover:ring-success/40 has-[[data-state=checked]]:bg-success/[0.07] has-[[data-state=checked]]:ring-2 has-[[data-state=checked]]:ring-success/60"
           >
             <RadioGroupItem value={v} />
-            <span className="text-sm font-medium capitalize">{v}</span>
+            <span className="text-sm font-bold capitalize">{v}</span>
           </label>
         ))}
       </RadioGroup>
@@ -125,16 +139,18 @@ export function AnswerEditor({ form, update }: Props) {
     });
   return (
     <div className="space-y-2">
-      <p className="text-xs text-muted-foreground">
+      <p className="mb-1 text-xs leading-relaxed text-muted-foreground">
         Tulis setiap pernyataan lalu tentukan kuncinya. Siswa memilih Benar/Salah per baris; nilai
         dihitung proporsional dari jumlah baris yang tepat.
       </p>
       {form.statements.map((s, i) => (
         <div
           key={i}
-          className="grid items-center gap-2 rounded-lg p-2 ring-1 ring-border sm:grid-cols-[auto_1fr_auto_auto]"
+          className="grid items-center gap-2.5 rounded-2xl p-2 pl-3 ring-1 ring-border sm:grid-cols-[auto_1fr_auto_auto]"
         >
-          <span className="w-6 text-center text-sm font-semibold">{i + 1}</span>
+          <span className="grid size-9 place-items-center rounded-xl bg-muted text-sm font-bold">
+            {i + 1}
+          </span>
           <Input
             value={s.text}
             onChange={(e) => setStatement(i, { text: e.target.value })}
@@ -151,7 +167,7 @@ export function AnswerEditor({ form, update }: Props) {
               <label
                 key={v}
                 className={cn(
-                  'flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium ring-1 ring-border',
+                  'flex cursor-pointer items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-semibold ring-1 ring-border transition-colors',
                   v === 'benar'
                     ? 'has-[[data-state=checked]]:bg-success/8 has-[[data-state=checked]]:text-success has-[[data-state=checked]]:ring-success/40'
                     : 'has-[[data-state=checked]]:bg-destructive/8 has-[[data-state=checked]]:text-destructive has-[[data-state=checked]]:ring-destructive/40'
@@ -170,13 +186,13 @@ export function AnswerEditor({ form, update }: Props) {
             disabled={form.statements.length <= 2}
             onClick={() => update({ statements: form.statements.filter((_, idx) => idx !== i) })}
           >
-            <Iconify icon="solar:close-circle-linear" size={18} />
+            <Iconify icon="solar:trash-bin-minimalistic-linear" size={18} />
           </Button>
         </div>
       ))}
       <Button
         type="button"
-        variant="outline"
+        variant="soft"
         size="sm"
         disabled={form.statements.length >= MAX_STATEMENTS}
         onClick={() => update({ statements: [...form.statements, { text: '', value: 'benar' }] })}

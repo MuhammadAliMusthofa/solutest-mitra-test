@@ -40,7 +40,7 @@ export function SearchInput({
   return (
     <label
       className={cn(
-        'flex h-10 w-full items-center gap-2 rounded-lg border border-input bg-background px-3 transition-shadow focus-within:border-primary focus-within:ring-3 focus-within:ring-primary/15 sm:w-64',
+        'flex h-11 w-full items-center gap-2.5 rounded-md border border-input bg-card px-3.5 transition-[border-color,box-shadow] duration-150 focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/12 hover:border-[color-mix(in_oklab,var(--input),var(--foreground)_18%)] sm:w-72',
         className
       )}
     >
@@ -51,7 +51,7 @@ export function SearchInput({
         onChange={(e) => setText(e.target.value)}
         placeholder={placeholder}
         aria-label={placeholder}
-        className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden"
+        className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground/80 [&::-webkit-search-cancel-button]:hidden"
       />
       {text && (
         <button

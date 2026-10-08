@@ -3,7 +3,6 @@
 import type { Question } from 'src/models/question';
 
 import Link from 'next/link';
-import { toast } from 'sonner';
 import { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 
@@ -14,9 +13,6 @@ import { Skeleton } from 'src/components/ui/skeleton';
 import { usePanel } from 'src/hooks/use-panel';
 
 import { cn } from 'src/lib/utils';
-import { formatShortDate } from 'src/utils/format';
-
-import { questionTypeName } from 'src/models/question';
 
 import { Iconify } from 'src/components/iconify/iconify';
 import { ErrorState } from 'src/components/feedback/error-state';
@@ -26,6 +22,7 @@ import { ConfirmDialog } from 'src/components/feedback/confirm-dialog';
 import { SectionCard } from 'src/components/data-display/section-card';
 
 import { QuestionCard } from '../components/question-card';
+import { PackageInfoCard } from '../components/package-info-card';
 import { PackageFormDialog } from '../components/package-form-dialog';
 import { usePackageDetail, usePaketMutations } from '../hooks/use-paket';
 
@@ -58,19 +55,6 @@ export function PaketDetailContainer() {
   const duplicate = () =>
     p &&
     duplicatePackage.mutate(p.id, { onSuccess: (pkg) => router.push(paths.paketDetail(pkg.id)) });
-
-  const typeCounts = Object.entries(
-    (p?.questions ?? []).reduce<Record<string, number>>((acc, q) => {
-      const name = questionTypeName(q.type_question_id);
-      return { ...acc, [name]: (acc[name] ?? 0) + 1 };
-    }, {})
-  );
-  const competencyCounts = Object.entries(
-    (p?.questions ?? []).reduce<Record<string, number>>((acc, q) => {
-      const name = q.competency_name ?? 'Tanpa kompetensi';
-      return { ...acc, [name]: (acc[name] ?? 0) + 1 };
-    }, {})
-  );
 
   return (
     <>
@@ -127,80 +111,14 @@ export function PaketDetailContainer() {
         </SectionCard>
       )}
       {p && (
-        <div className="grid gap-6 xl:grid-cols-[320px_1fr]">
-          <SectionCard title="Info paket" className="h-fit xl:sticky xl:top-28">
-            <div className="flex items-center justify-between rounded-xl bg-primary/6 px-4 py-3">
-              <div>
-                <p className="text-xs text-muted-foreground">Kode paket</p>
-                <p className="font-mono text-lg font-semibold">{p.code}</p>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label="Salin kode paket"
-                onClick={() =>
-                  navigator.clipboard
-                    .writeText(p.code)
-                    .then(() => toast.success('Kode paket disalin'))
-                }
-              >
-                <Iconify icon="solar:copy-linear" size={18} />
-              </Button>
-            </div>
-            <dl className="mt-4 space-y-2 text-sm">
-              {[
-                ['Mapel', p.subject_name ?? '—'],
-                ['Kelas', p.class_name ?? '—'],
-                ['Sumber', p.source === 'SOLUTEST' ? 'Salinan paket Solutest' : 'Buatan mitra'],
-                ['Jumlah soal', String(p.question_count)],
-                ['Durasi bawaan', `${p.time} menit`],
-                ['Tampilkan nilai', p.show_score ? 'Ya' : 'Tidak'],
-                [
-                  'Deteksi kecurangan',
-                  p.is_cheat_detection ? `Aktif (maks. ${p.max_violations} pelanggaran)` : 'Tidak',
-                ],
-                ['Dipakai jadwal', `${p.schedule_count}×`],
-                ['Diperbarui', formatShortDate(p.updatedAt)],
-              ].map(([k, v]) => (
-                <div key={k} className="flex justify-between gap-4">
-                  <dt className="text-muted-foreground">{k}</dt>
-                  <dd className="text-right font-medium">{v}</dd>
-                </div>
-              ))}
-            </dl>
-            {competencyCounts.length > 0 && (
-              <div className="mt-4">
-                <p className="mb-2 text-xs font-semibold text-muted-foreground uppercase">
-                  Sebaran kompetensi
-                </p>
-                <ul className="space-y-1 text-sm">
-                  {competencyCounts.map(([name, n]) => (
-                    <li key={name} className="flex justify-between gap-3">
-                      <span className="line-clamp-2">{name}</span>
-                      <span className="font-semibold tabular-nums">{n}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {typeCounts.length > 0 && (
-              <div className="mt-4">
-                <p className="mb-2 text-xs font-semibold text-muted-foreground uppercase">
-                  Komposisi tipe
-                </p>
-                <ul className="space-y-1 text-sm">
-                  {typeCounts.map(([name, n]) => (
-                    <li key={name} className="flex justify-between">
-                      <span>{name}</span>
-                      <span className="font-semibold tabular-nums">{n}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </SectionCard>
+        <div className="grid items-start gap-6 xl:grid-cols-[340px_1fr]">
+          <PackageInfoCard p={p} />
 
-          <SectionCard title={`Daftar soal (${p.questions.length})`}>
+          <SectionCard
+            title="Daftar soal"
+            description={`${p.questions.length} soal di paket ini`}
+            icon="solar:document-text-linear"
+          >
             {p.questions.length === 0 ? (
               <EmptyState
                 title="Paket masih kosong"
@@ -219,7 +137,7 @@ export function PaketDetailContainer() {
               <>
                 <div
                   className={cn(
-                    'sticky top-24 z-10 mb-4 flex flex-wrap items-center gap-3 rounded-xl bg-card px-4 py-2.5 ring-1 ring-border',
+                    'sticky top-24 z-10 mb-5 flex min-h-14 flex-wrap items-center gap-3 rounded-2xl bg-[color-mix(in_srgb,var(--primary)_6%,var(--card))] px-4 py-2.5 shadow-[0_6px_16px_-10px_var(--primary)] ring-1 ring-primary/10',
                     locked && 'hidden'
                   )}
                 >

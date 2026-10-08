@@ -83,7 +83,7 @@ export function SchoolSubjectsPanel({ school, code }: { school: SchoolRankingIte
         <div key={s.code} className="rounded-xl bg-card p-4 ring-1 ring-border">
           <p className="text-sm text-muted-foreground">{s.name}</p>
           <div className="mt-1 flex items-center justify-between gap-2">
-            <span className="text-xl font-semibold tabular-nums">{formatScore(s.average)}</span>
+            <span className="text-xl font-bold tabular-nums">{formatScore(s.average)}</span>
             <PredicateBadge predicate={s.predicate} />
           </div>
         </div>

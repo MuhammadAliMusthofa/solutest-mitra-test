@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react';
+
 import { cn } from 'src/lib/utils';
 import { formatSigned } from 'src/utils/format';
 
@@ -6,14 +8,69 @@ import { Sparkline } from 'src/components/charts/sparkline';
 
 export type KpiTone = 'primary' | 'secondary' | 'accent' | 'info' | 'success' | 'warning';
 
-const ICON_TONE: Record<KpiTone, string> = {
-  primary: 'bg-primary/10 text-primary',
-  secondary: 'bg-secondary/12 text-[color-mix(in_oklab,var(--secondary)_80%,black)]',
-  accent: 'bg-brand-accent/22 text-[color-mix(in_oklab,var(--brand-accent)_40%,black)]',
-  info: 'bg-info/10 text-info',
-  success: 'bg-success/10 text-success',
-  warning: 'bg-warning/10 text-warning',
+/** Variabel CSS warna per tone (dipakai untuk tint latar, ikon solid, dan lingkaran dekoratif). */
+export const TONE_VAR: Record<KpiTone, string> = {
+  primary: 'var(--primary)',
+  secondary: 'var(--secondary)',
+  accent: 'var(--brand-accent)',
+  info: 'var(--info)',
+  success: 'var(--success)',
+  warning: 'var(--warning)',
 };
+
+/** Teks/ikon bertone yang tetap terbaca di atas latar tint (secondary & accent bisa terang). */
+const TONE_INK: Record<KpiTone, string> = {
+  primary: 'var(--primary)',
+  secondary: 'var(--secondary-ink)',
+  accent: 'var(--accent-ink)',
+  info: 'var(--info)',
+  success: 'var(--success)',
+  warning: 'var(--warning)',
+};
+
+/** Style inline untuk elemen bertone: --tone (warna) & --tone-ink (teks di atas tint). */
+export const toneStyle = (tone: KpiTone): CSSProperties =>
+  ({
+    '--tone': TONE_VAR[tone],
+    '--tone-ink': TONE_INK[tone],
+    '--deco': TONE_VAR[tone],
+  }) as CSSProperties;
+
+/** Ikon bertint ala Spike (bg-light* + ikon berwarna). */
+export function ToneIcon({
+  icon,
+  tone = 'primary',
+  size = 'md',
+  solid,
+  className,
+}: {
+  icon: string;
+  tone?: KpiTone;
+  size?: 'sm' | 'md' | 'lg';
+  /** latar warna penuh + ikon putih */
+  solid?: boolean;
+  className?: string;
+}) {
+  const box = { sm: 'size-9 rounded-xl', md: 'size-11 rounded-2xl', lg: 'size-14 rounded-2xl' }[
+    size
+  ];
+  const px = { sm: 18, md: 22, lg: 28 }[size];
+  return (
+    <span
+      style={toneStyle(tone)}
+      className={cn(
+        'grid shrink-0 place-items-center',
+        box,
+        solid
+          ? 'bg-(--tone) text-white shadow-[0_8px_18px_-8px_var(--tone)]'
+          : 'bg-[color-mix(in_srgb,var(--tone)_12%,transparent)] text-(--tone-ink)',
+        className
+      )}
+    >
+      <Iconify icon={icon} size={px} />
+    </span>
+  );
+}
 
 interface Props {
   label: string;
@@ -27,7 +84,10 @@ interface Props {
   className?: string;
 }
 
-/** Kartu KPI: angka utama, ikon bertone, delta naik/turun (ikon + teks), sparkline opsional. */
+/**
+ * Kartu KPI ala Spike: latar tint warna tone, ikon solid, angka besar, delta naik/turun
+ * (ikon + teks), sparkline opsional, lingkaran dekoratif di pojok.
+ */
 export function KpiCard({
   label,
   value,
@@ -40,22 +100,30 @@ export function KpiCard({
 }: Props) {
   const up = (delta ?? 0) >= 0;
   return (
-    <div className={cn('flex flex-col gap-4 rounded-card bg-card p-5 shadow-card', className)}>
+    <div
+      style={toneStyle(tone)}
+      className={cn(
+        'deco-rings flex flex-col gap-5 rounded-card bg-[color-mix(in_srgb,var(--tone)_9%,var(--card))] p-5 md:p-6',
+        className
+      )}
+    >
       <div className="flex items-start justify-between gap-3">
-        <span className={cn('grid size-12 place-items-center rounded-xl', ICON_TONE[tone])}>
-          <Iconify icon={icon} size={24} />
-        </span>
-        {trend && trend.length > 1 && <Sparkline values={trend} label={`Tren ${label}`} />}
+        <ToneIcon icon={icon} tone={tone} solid />
+        {trend && trend.length > 1 && (
+          <Sparkline values={trend} label={`Tren ${label}`} color="var(--tone-ink)" />
+        )}
       </div>
       <div>
-        <p className="text-sm text-muted-foreground">{label}</p>
+        <p className="text-sm font-medium text-foreground/70">{label}</p>
         <div className="mt-1 flex flex-wrap items-baseline gap-2">
-          <span className="text-2xl font-semibold tabular-nums">{value}</span>
+          <span className="text-[1.75rem] leading-tight font-bold tracking-[-0.02em] text-foreground tabular-nums">
+            {value}
+          </span>
           {delta !== undefined && delta !== null && (
             <span
               className={cn(
-                'inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-xs font-semibold',
-                up ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'
+                'inline-flex items-center gap-0.5 rounded-full bg-card px-2 py-0.5 text-xs font-bold',
+                up ? 'text-success' : 'text-destructive'
               )}
             >
               <Iconify
@@ -66,7 +134,7 @@ export function KpiCard({
             </span>
           )}
         </div>
-        {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
+        {hint && <p className="mt-1 text-xs text-foreground/60">{hint}</p>}
       </div>
     </div>
   );
@@ -87,17 +155,17 @@ export function StatTile({
   className?: string;
 }) {
   return (
-    <div className={cn('flex items-center gap-3 rounded-xl bg-muted/60 p-4', className)}>
-      {icon && (
-        <span
-          className={cn('grid size-10 shrink-0 place-items-center rounded-lg', ICON_TONE[tone])}
-        >
-          <Iconify icon={icon} size={20} />
-        </span>
+    <div
+      style={toneStyle(tone)}
+      className={cn(
+        'flex items-center gap-3 rounded-2xl bg-[color-mix(in_srgb,var(--tone)_7%,var(--card))] p-4',
+        className
       )}
+    >
+      {icon && <ToneIcon icon={icon} tone={tone} size="sm" />}
       <div className="min-w-0">
-        <p className="truncate text-xs text-muted-foreground">{label}</p>
-        <p className="truncate text-lg font-semibold tabular-nums">{value}</p>
+        <p className="truncate text-xs font-medium text-foreground/65">{label}</p>
+        <p className="truncate text-lg font-bold tabular-nums">{value}</p>
       </div>
     </div>
   );

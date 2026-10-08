@@ -331,7 +331,7 @@ export function ImportSiswaContainer() {
                 ).map(([label, n, tone]) => (
                   <div key={label} className={cn('rounded-xl p-4', tone)}>
                     <p className="text-xs text-muted-foreground">{label}</p>
-                    <p className="text-2xl font-semibold">{n}</p>
+                    <p className="text-2xl font-bold">{n}</p>
                   </div>
                 ))}
               </div>
@@ -371,9 +371,7 @@ export function ImportSiswaContainer() {
                       {columns
                         .filter((c) => c.key !== 'password')
                         .map((c) => (
-                          <TableHead key={c.key} className="text-xs uppercase">
-                            {c.header}
-                          </TableHead>
+                          <TableHead key={c.key}>{c.header}</TableHead>
                         ))}
                       <TableHead>Status</TableHead>
                     </TableRow>

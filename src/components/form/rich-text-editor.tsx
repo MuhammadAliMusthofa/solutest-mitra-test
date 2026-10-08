@@ -78,7 +78,7 @@ function Toolbar({ editor }: { editor: Editor }) {
   ];
   return (
     <div
-      className="flex flex-wrap items-center gap-0.5 border-b border-border px-1.5 py-1"
+      className="flex flex-wrap items-center gap-0.5 border-b border-border bg-muted/50 px-2 py-1.5"
       role="toolbar"
       aria-label="Format teks"
     >
@@ -91,8 +91,9 @@ function Toolbar({ editor }: { editor: Editor }) {
           aria-pressed={b.active}
           onClick={b.run}
           className={cn(
-            'grid size-8 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground',
-            b.active && 'bg-primary/10 text-primary'
+            'grid size-8 place-items-center rounded-lg text-foreground/60 transition-colors hover:bg-card hover:text-primary hover:shadow-card',
+            b.active &&
+              'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground'
           )}
         >
           <Iconify icon={b.icon} size={17} />
@@ -105,7 +106,7 @@ function Toolbar({ editor }: { editor: Editor }) {
         aria-label="Urungkan"
         disabled={!state.canUndo}
         onClick={() => editor.chain().focus().undo().run()}
-        className="grid size-8 place-items-center rounded-md text-muted-foreground hover:bg-muted disabled:opacity-40"
+        className="grid size-8 place-items-center rounded-lg text-foreground/60 transition-colors hover:bg-card hover:text-primary disabled:opacity-40"
       >
         <Iconify icon="solar:undo-left-linear" size={17} />
       </button>
@@ -115,7 +116,7 @@ function Toolbar({ editor }: { editor: Editor }) {
         aria-label="Ulangi"
         disabled={!state.canRedo}
         onClick={() => editor.chain().focus().redo().run()}
-        className="grid size-8 place-items-center rounded-md text-muted-foreground hover:bg-muted disabled:opacity-40"
+        className="grid size-8 place-items-center rounded-lg text-foreground/60 transition-colors hover:bg-card hover:text-primary disabled:opacity-40"
       >
         <Iconify icon="solar:undo-right-linear" size={17} />
       </button>
@@ -142,7 +143,7 @@ export function RichTextEditor({
     immediatelyRender: false,
     editorProps: {
       attributes: {
-        class: 'rich-content px-3 py-2 text-sm',
+        class: 'rich-content px-4 py-3 text-sm',
         style: `min-height:${minHeight}px`,
         ...(id ? { id } : {}),
         'aria-label': rest['aria-label'] ?? placeholder ?? 'Editor teks',
@@ -168,7 +169,7 @@ export function RichTextEditor({
   return (
     <div
       className={cn(
-        'overflow-hidden rounded-lg border border-input bg-background transition-shadow focus-within:border-primary focus-within:ring-3 focus-within:ring-primary/15',
+        'overflow-hidden rounded-xl border border-input bg-card transition-[border-color,box-shadow] duration-150 focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/12 hover:border-[color-mix(in_oklab,var(--input),var(--foreground)_18%)]',
         invalid && 'border-destructive'
       )}
     >

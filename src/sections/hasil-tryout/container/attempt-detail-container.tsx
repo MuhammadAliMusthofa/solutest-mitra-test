@@ -149,7 +149,7 @@ export function AttemptDetailContainer() {
                 )}
               </div>
               {q.text && (
-                <div className="mb-3 rounded-lg border-l-4 border-secondary/40 bg-muted/50 p-3 text-sm">
+                <div className="mb-3 rounded-xl bg-secondary/8 p-3.5 text-sm">
                   <HtmlContent html={q.text} />
                 </div>
               )}

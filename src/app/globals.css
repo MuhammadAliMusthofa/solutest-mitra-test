@@ -46,7 +46,15 @@
   --chart-4: #c98a16;
   --chart-5: #1a8a55;
   --shadow-card: 0 2px 6px color-mix(in srgb, var(--primary) 10%, transparent);
-  --shadow-card-hover: 0 10px 28px -6px color-mix(in srgb, var(--primary) 18%, transparent);
+  --shadow-card-hover: 0 14px 30px -8px color-mix(in srgb, var(--primary) 22%, transparent);
+  /* tombol utama & elemen terangkat (menu, dialog) */
+  --shadow-btn: 0 6px 16px -6px color-mix(in srgb, var(--primary) 55%, transparent);
+  --shadow-pop:
+    0 1px 2px color-mix(in srgb, var(--foreground) 6%, transparent),
+    0 18px 40px -12px color-mix(in srgb, var(--primary) 26%, transparent);
+  /* teks gelap di atas warna tema terang (secondary/accent) */
+  --secondary-ink: color-mix(in oklab, var(--secondary) 78%, black);
+  --accent-ink: color-mix(in oklab, var(--brand-accent) 42%, black);
 
   /* sidebar — gaya "light" (bawaan); "brand" & "dark" diatur lewat [data-sidebar] */
   --sidebar: #ffffff;
@@ -62,6 +70,8 @@
 
 [data-sidebar-style='brand'] {
   --sidebar: var(--primary);
+  --sidebar-primary: var(--primary-foreground);
+  --sidebar-primary-foreground: var(--primary);
   --sidebar-foreground: var(--primary-foreground);
   --sidebar-muted: color-mix(in oklab, var(--primary-foreground) 72%, var(--primary));
   --sidebar-accent: color-mix(in oklab, var(--primary-foreground) 16%, var(--primary));
@@ -79,9 +89,10 @@
 }
 
 @theme inline {
-  --font-sans: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
-  --font-heading: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  /* kode/angka (kode tryout, NISN, timer) tetap Jakarta Sans; utilitas .font-mono memberi angka tabular */
+  --font-mono: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -134,6 +145,10 @@
 
   --shadow-card: var(--shadow-card);
   --shadow-card-hover: var(--shadow-card-hover);
+  --shadow-btn: var(--shadow-btn);
+  --shadow-pop: var(--shadow-pop);
+  --color-secondary-ink: var(--secondary-ink);
+  --color-accent-ink: var(--accent-ink);
 }
 
 @layer base {
@@ -147,6 +162,38 @@
   body {
     @apply bg-page text-foreground antialiased;
   }
+  ::selection {
+    background: color-mix(in srgb, var(--primary) 22%, transparent);
+    color: var(--foreground);
+  }
+  input,
+  textarea,
+  [contenteditable='true'] {
+    caret-color: var(--primary);
+  }
+  /* scrollbar tipis bertema (Firefox + WebKit) */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--primary) 22%, transparent) transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--primary) 22%, transparent);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, var(--primary) 38%, transparent);
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .font-mono {
+    font-variant-numeric: tabular-nums slashed-zero;
+    letter-spacing: 0.02em;
+  }
   button:not(:disabled),
   [role='button']:not(:disabled) {
     cursor: pointer;
@@ -155,7 +202,7 @@
   h2,
   h3,
   h4 {
-    @apply font-heading tracking-tight text-balance;
+    @apply font-heading tracking-[-0.015em] text-balance;
   }
 }
 
@@ -184,7 +231,7 @@
     @apply border border-border px-2 py-1;
   }
   .rich-content blockquote {
-    @apply my-2 border-l-4 border-primary/30 pl-3 text-muted-foreground;
+    @apply my-2 rounded-xl bg-primary/5 px-4 py-2.5 text-foreground/75 italic;
   }
 
   .tiptap:focus {
@@ -223,6 +270,38 @@
       transform: none;
     }
   }
+  /*
+   * Lingkaran dekoratif ala Spike di pojok kanan kartu berwarna (header halaman, sapaan, KPI).
+   * Warna dari variabel `--deco` (bawaan: primary) sehingga ikut tema / tone.
+   */
+  .deco-rings {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+  }
+  .deco-rings::before,
+  .deco-rings::after {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    border-radius: 999px;
+    pointer-events: none;
+  }
+  .deco-rings::before {
+    width: 220px;
+    height: 220px;
+    right: -70px;
+    top: -110px;
+    background: color-mix(in srgb, var(--deco, var(--primary)) 10%, transparent);
+  }
+  .deco-rings::after {
+    width: 150px;
+    height: 150px;
+    right: 30px;
+    bottom: -100px;
+    border: 22px solid color-mix(in srgb, var(--deco, var(--primary)) 8%, transparent);
+  }
+
   /* Halaman ujian: cegah seleksi teks (salin soal). */
   .no-select {
     user-select: none;

@@ -9,8 +9,9 @@ import { useQuery, keepPreviousData } from '@tanstack/react-query';
 
 import { Button } from 'src/components/ui/button';
 import { Skeleton } from 'src/components/ui/skeleton';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from 'src/components/ui/collapsible';
 
-import { SISWA_PATHS } from 'src/config/paths';
+import { withQuery, SISWA_PATHS } from 'src/config/paths';
 
 import { useHydrated } from 'src/hooks/use-hydrated';
 import { useUrlState } from 'src/hooks/use-url-state';
@@ -18,37 +19,144 @@ import { useUrlState } from 'src/hooks/use-url-state';
 import { formatScore, formatDateTime } from 'src/utils/format';
 
 import { practiceService } from 'src/services/student';
-import { questionTypeName } from 'src/models/question';
 
 import { Iconify } from 'src/components/iconify/iconify';
 import { ErrorState } from 'src/components/feedback/error-state';
 import { EmptyState } from 'src/components/feedback/empty-state';
 import { StatusPill } from 'src/components/data-display/status-pill';
-import { PageHeader } from 'src/components/data-display/page-header';
-import { HtmlContent } from 'src/components/data-display/html-content';
-import { SectionCard } from 'src/components/data-display/section-card';
+import { HeroBanner } from 'src/components/data-display/hero-banner';
 import { TablePagination } from 'src/components/data-display/table-pagination';
 
-import { ReviewAnswer } from 'src/sections/_global/components/review-answer';
 import { KICKED_OUT_KEY } from 'src/sections/ujian/hooks/use-cheat-detection';
 import { PredicateBadge } from 'src/sections/_global/components/predicate-badge';
 
-function HistoryActions({ item }: { item: Pick<HistoryItem, 'practice_id'> }) {
+const leaderboardHref = (scheduleId: number) =>
+  withQuery(SISWA_PATHS.leaderboard, { paket: scheduleId });
+
+/** Ajakan membuka laporan performa pribadi (kekuatan & materi yang perlu ditingkatkan). */
+function ReportBanner({ practiceId }: { practiceId: number }) {
   return (
-    <div className="flex flex-wrap gap-2">
-      <Button variant="outline" size="sm" asChild>
-        <Link href={SISWA_PATHS.explanation(item.practice_id)}>
-          <Iconify icon="solar:book-bookmark-linear" size={16} />
-          Pembahasan
-        </Link>
-      </Button>
-      <Button variant="outline" size="sm" asChild>
-        <Link href={SISWA_PATHS.report(item.practice_id)}>
-          <Iconify icon="solar:chart-square-linear" size={16} />
-          Laporan performa
-        </Link>
-      </Button>
-    </div>
+    <Link
+      href={SISWA_PATHS.report(practiceId)}
+      className="group/report mt-5 flex items-stretch overflow-hidden rounded-2xl bg-primary/25 transition-colors hover:bg-primary/35 focus-visible:ring-4 focus-visible:ring-primary/40 focus-visible:outline-none"
+    >
+      <span className="grid w-24 shrink-0 grid-cols-2 grid-rows-2 sm:w-40" aria-hidden>
+        <span className="grid place-items-center bg-primary text-primary-foreground">
+          <Iconify icon="solar:star-shine-bold" size={22} />
+        </span>
+        <span className="grid place-items-center bg-secondary text-secondary-foreground">
+          <Iconify icon="solar:chart-2-bold" size={22} />
+        </span>
+        <span className="grid place-items-center bg-brand-accent text-brand-accent-foreground">
+          <Iconify icon="solar:target-bold" size={22} />
+        </span>
+        <span className="grid place-items-center bg-info text-white">
+          <Iconify icon="solar:graph-up-bold" size={22} />
+        </span>
+      </span>
+      <span className="flex min-w-0 flex-1 items-center gap-4 px-5 py-4">
+        <span className="min-w-0 flex-1">
+          <span className="block text-base font-extrabold md:text-lg">
+            Laporan Performa Pribadi
+          </span>
+          <span className="mt-1 block text-sm leading-relaxed text-foreground/75">
+            Ketahui kekuatanmu, materi yang perlu ditingkatkan, dan strategi belajar berdasarkan
+            hasil tryout ini.
+          </span>
+        </span>
+        <Iconify
+          icon="solar:arrow-right-up-linear"
+          size={22}
+          className="hidden shrink-0 transition-transform group-hover/report:translate-x-0.5 group-hover/report:-translate-y-0.5 sm:block"
+        />
+      </span>
+    </Link>
+  );
+}
+
+function HistoryCard({ h }: { h: HistoryItem }) {
+  const scored = h.is_processed && h.score !== null;
+  return (
+    <article className="rounded-card bg-card p-6 shadow-card md:p-8">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold text-muted-foreground">
+            Dikerjakan pada {formatDateTime(h.submitted_at)}
+          </p>
+          <h2 className="mt-1.5 text-lg font-extrabold md:text-xl">{h.title}</h2>
+          <ul className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm font-semibold text-foreground/75">
+            <li className="flex items-center gap-1.5">
+              <Iconify icon="solar:clock-circle-linear" size={18} />
+              {h.time} Menit
+            </li>
+            <li className="flex items-center gap-1.5">
+              <Iconify icon="solar:book-2-linear" size={18} />
+              {h.subject_name || h.package_title}
+            </li>
+            {h.is_auto_ended && (
+              <li>
+                <StatusPill tone="warning" icon="solar:danger-circle-linear">
+                  Dikumpulkan otomatis
+                </StatusPill>
+              </li>
+            )}
+          </ul>
+        </div>
+        {h.is_processed ? (
+          scored && (
+            <div className="flex items-center gap-3 rounded-2xl bg-muted/70 px-4 py-2.5">
+              <div className="text-right">
+                <p className="text-xs font-semibold text-muted-foreground">Skor</p>
+                <p className="text-2xl leading-tight font-extrabold tabular-nums">
+                  {formatScore(h.score ?? undefined)}
+                </p>
+              </div>
+              {h.predicate && <PredicateBadge predicate={h.predicate} />}
+            </div>
+          )
+        ) : (
+          <StatusPill tone="info" icon="svg-spinners:180-ring">
+            Nilai sedang dihitung
+          </StatusPill>
+        )}
+      </div>
+
+      <ReportBanner practiceId={h.practice_id} />
+
+      <Collapsible>
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+          <CollapsibleTrigger className="group/detail flex items-center gap-1.5 text-sm font-bold hover:text-primary">
+            Lihat detail paket soal
+            <Iconify
+              icon="solar:alt-arrow-down-linear"
+              size={16}
+              className="transition-transform group-data-[state=open]/detail:rotate-180"
+            />
+          </CollapsibleTrigger>
+          <Link
+            href={leaderboardHref(h.schedule_id)}
+            className="flex items-center gap-1.5 text-sm font-bold hover:text-primary"
+          >
+            Lihat Peringkat Leaderboard
+            <Iconify icon="solar:arrow-right-up-linear" size={16} />
+          </Link>
+        </div>
+        <CollapsibleContent>
+          <dl className="mt-4 grid gap-3 rounded-2xl bg-muted/60 p-4 text-sm sm:grid-cols-3">
+            {[
+              ['Paket soal', h.package_title || '-'],
+              ['Mulai mengerjakan', formatDateTime(h.started_at)],
+              ['Dikumpulkan', formatDateTime(h.submitted_at)],
+            ].map(([k, v]) => (
+              <div key={k}>
+                <dt className="text-xs font-semibold text-muted-foreground">{k}</dt>
+                <dd className="mt-0.5 font-bold">{v}</dd>
+              </div>
+            ))}
+          </dl>
+        </CollapsibleContent>
+      </Collapsible>
+    </article>
   );
 }
 
@@ -56,7 +164,7 @@ function HistoryActions({ item }: { item: Pick<HistoryItem, 'practice_id'> }) {
 export function TryoutFinishedContainer() {
   const { practiceId } = useParams<{ practiceId: string }>();
   const query = useQuery({
-    queryKey: ['student', 'explanation', practiceId],
+    queryKey: ['student', 'result', practiceId],
     queryFn: () => practiceService.result(practiceId),
     refetchInterval: (q) => (q.state.data && !q.state.data.is_processed ? 2500 : false),
   });
@@ -81,16 +189,16 @@ export function TryoutFinishedContainer() {
   return (
     <div className="mx-auto max-w-2xl">
       <section className="overflow-hidden rounded-card bg-card text-center shadow-card">
-        <div className="bg-gradient-to-br from-primary to-secondary px-6 py-10 text-primary-foreground">
-          <Iconify icon="solar:cup-star-bold-duotone" size={64} className="mx-auto" />
-          <h1 className="mt-3 text-2xl font-semibold">Tryout berhasil dikumpulkan</h1>
-          <p className="mt-1 opacity-90">{d?.title ?? '…'}</p>
+        <div className="deco-rings bg-primary px-6 py-10 text-primary-foreground [--deco:var(--primary-foreground)]">
+          <Iconify icon="solar:cup-star-bold-duotone" size={72} className="mx-auto" />
+          <h1 className="mt-3 text-2xl font-extrabold">Tryout berhasil dikumpulkan</h1>
+          <p className="mt-1 font-semibold opacity-80">{d?.title ?? '…'}</p>
         </div>
-        <div className="p-6">
+        <div className="p-6 md:p-8">
           {hydrated && kicked && (
             <p
               role="alert"
-              className="mb-4 rounded-lg bg-destructive/8 px-4 py-3 text-left text-sm text-destructive"
+              className="mb-4 rounded-xl bg-destructive/8 px-4 py-3 text-left text-sm text-destructive"
             >
               {kicked}
             </p>
@@ -108,9 +216,9 @@ export function TryoutFinishedContainer() {
             </p>
           ) : d ? (
             <>
-              <p className="text-sm text-muted-foreground">Skor kamu</p>
-              <p className="text-5xl font-semibold tabular-nums">{formatScore(d.score)}</p>
-              <div className="mt-2 flex justify-center">
+              <p className="text-sm font-semibold text-muted-foreground">Skor kamu</p>
+              <p className="text-6xl font-extrabold tabular-nums">{formatScore(d.score)}</p>
+              <div className="mt-3 flex justify-center">
                 <PredicateBadge predicate={d.predicate} />
               </div>
               {d.total_correct !== null && (
@@ -120,11 +228,16 @@ export function TryoutFinishedContainer() {
           ) : (
             <ErrorState error={query.error} onRetry={() => query.refetch()} />
           )}
-          <div className="mt-6 flex flex-wrap justify-center gap-2">
-            <HistoryActions item={{ practice_id: Number(practiceId) }} />
-            <Button size="sm" asChild>
+          <div className="mt-7 grid gap-2 sm:grid-cols-2">
+            <Button variant="outline" size="lg" className="rounded-lg" asChild>
+              <Link href={SISWA_PATHS.report(practiceId)}>
+                <Iconify icon="solar:chart-square-linear" size={18} />
+                Laporan performa
+              </Link>
+            </Button>
+            <Button variant="dark" size="lg" className="rounded-lg" asChild>
               <Link href={SISWA_PATHS.leaderboard}>
-                <Iconify icon="solar:cup-star-linear" size={16} />
+                <Iconify icon="solar:cup-star-linear" size={18} />
                 Leaderboard
               </Link>
             </Button>
@@ -148,157 +261,37 @@ export function HistoryContainer() {
 
   return (
     <>
-      <PageHeader
+      <HeroBanner
         title="Riwayat Tryout"
-        crumbs={[{ label: 'Beranda', href: SISWA_PATHS.root }, { label: 'Riwayat' }]}
+        description="Semua tryout yang sudah kamu kumpulkan, lengkap dengan laporan performa dan peringkat."
+        crumbs={[{ label: 'Tryout', href: SISWA_PATHS.tryout }, { label: 'Riwayat' }]}
+        icon="solar:history-bold-duotone"
       />
       {query.isPending && <Skeleton className="h-72 w-full rounded-card" />}
-      {query.isError && <ErrorState error={query.error} onRetry={() => query.refetch()} />}
-      {query.data?.data.length === 0 && (
-        <EmptyState
-          title="Belum ada riwayat"
-          description="Tryout yang sudah dikumpulkan akan muncul di sini."
-          icon="solar:history-linear"
-        />
+      {query.isError && (
+        <div className="rounded-card bg-card shadow-card">
+          <ErrorState error={query.error} onRetry={() => query.refetch()} />
+        </div>
       )}
-      <div className="space-y-4">
+      {query.data?.data.length === 0 && (
+        <div className="rounded-card bg-card shadow-card">
+          <EmptyState
+            title="Belum ada riwayat"
+            description="Tryout yang sudah dikumpulkan akan muncul di sini."
+            icon="solar:history-linear"
+          />
+        </div>
+      )}
+      <div className="space-y-6">
         {query.data?.data.map((h) => (
-          <article
-            key={h.practice_id}
-            className="flex flex-col gap-4 rounded-card bg-card p-5 shadow-card md:flex-row md:items-center"
-          >
-            <div className="grid size-16 shrink-0 place-items-center rounded-2xl bg-primary/8">
-              <span className="text-xl font-semibold text-primary tabular-nums">
-                {h.is_processed ? formatScore(h.score ?? undefined, 0) : '…'}
-              </span>
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="font-semibold">{h.title}</p>
-                <PredicateBadge predicate={h.predicate} />
-                {h.is_auto_ended && <StatusPill tone="warning">Dikumpulkan otomatis</StatusPill>}
-              </div>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {[
-                  h.subject_name || h.package_title,
-                  `${h.time} menit`,
-                  formatDateTime(h.submitted_at),
-                ]
-                  .filter(Boolean)
-                  .join(' · ')}
-              </p>
-            </div>
-            <HistoryActions item={h} />
-          </article>
+          <HistoryCard key={h.practice_id} h={h} />
         ))}
       </div>
-      <TablePagination
-        meta={query.data?.pagination}
-        onPageChange={(p) => setF({ page: p })}
-        className="px-0"
-      />
-    </>
-  );
-}
-
-export function ExplanationContainer() {
-  const { practiceId } = useParams<{ practiceId: string }>();
-  const query = useQuery({
-    queryKey: ['student', 'explanation', practiceId],
-    queryFn: () => practiceService.result(practiceId),
-  });
-  const d = query.data;
-
-  return (
-    <>
-      {d && !d.review_available && (
-        <SectionCard className="mb-6">
-          <EmptyState
-            title="Pembahasan belum dibuka"
-            description={
-              d.score === null && d.is_processed
-                ? 'Penyelenggara tidak menampilkan nilai & pembahasan tryout ini.'
-                : `Kunci & pembahasan tersedia setelah tryout ditutup (${formatDateTime(d.schedule_end_at)}).`
-            }
-            icon="solar:lock-keyhole-linear"
-          />
-        </SectionCard>
+      {query.data && query.data.pagination.total_items > 0 && (
+        <div className="mt-6 rounded-card bg-card shadow-card">
+          <TablePagination meta={query.data.pagination} onPageChange={(p) => setF({ page: p })} />
+        </div>
       )}
-      <PageHeader
-        title={d ? `Pembahasan — ${d.title}` : 'Pembahasan'}
-        backHref={SISWA_PATHS.history}
-        crumbs={[{ label: 'Riwayat', href: SISWA_PATHS.history }, { label: 'Pembahasan' }]}
-        actions={
-          d &&
-          d.score !== null && <StatusPill tone="primary">Skor {formatScore(d.score)}</StatusPill>
-        }
-      />
-      {query.isPending && <Skeleton className="h-96 w-full rounded-card" />}
-      {query.isError && <ErrorState error={query.error} onRetry={() => query.refetch()} />}
-      <div className="space-y-4">
-        {d?.questions.map((q, i) => {
-          const status =
-            q.score >= 100
-              ? 'benar'
-              : q.score > 0
-                ? 'sebagian'
-                : (q.answer as unknown[]).length
-                  ? 'salah'
-                  : 'kosong';
-          return (
-            <SectionCard key={q.id}>
-              <div className="mb-3 flex flex-wrap items-center gap-2">
-                <span className="grid size-8 place-items-center rounded-lg bg-primary/10 text-sm font-semibold text-primary">
-                  {i + 1}
-                </span>
-                <StatusPill tone="secondary">{questionTypeName(q.type_question_id)}</StatusPill>
-                <StatusPill
-                  tone={
-                    status === 'benar'
-                      ? 'success'
-                      : status === 'sebagian'
-                        ? 'warning'
-                        : status === 'salah'
-                          ? 'danger'
-                          : 'neutral'
-                  }
-                  icon={
-                    status === 'benar'
-                      ? 'solar:check-circle-linear'
-                      : status === 'kosong'
-                        ? 'solar:minus-circle-linear'
-                        : 'solar:close-circle-linear'
-                  }
-                >
-                  {status === 'benar'
-                    ? 'Benar'
-                    : status === 'sebagian'
-                      ? `Sebagian (${q.score})`
-                      : status === 'salah'
-                        ? 'Salah'
-                        : 'Tidak dijawab'}
-                </StatusPill>
-              </div>
-              {q.text && (
-                <div className="mb-3 rounded-lg border-l-4 border-secondary/40 bg-muted/50 p-3 text-sm">
-                  <HtmlContent html={q.text} />
-                </div>
-              )}
-              <HtmlContent html={q.question_text} className="mb-3" />
-              <ReviewAnswer q={q} />
-              {q.description && (
-                <div className="mt-4 rounded-lg bg-primary/5 p-4 text-sm">
-                  <p className="mb-1 flex items-center gap-1.5 font-semibold text-primary">
-                    <Iconify icon="solar:lightbulb-bolt-linear" size={18} />
-                    Pembahasan
-                  </p>
-                  <HtmlContent html={q.description} />
-                </div>
-              )}
-            </SectionCard>
-          );
-        })}
-      </div>
     </>
   );
 }

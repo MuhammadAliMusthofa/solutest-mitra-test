@@ -25,9 +25,9 @@ const LETTERS = 'ABCDEFGHIJ';
 function AnswerKey({ q }: { q: Question }) {
   if (q.type_question_id === 9) {
     return (
-      <div className="overflow-x-auto rounded-lg ring-1 ring-border">
+      <div className="overflow-x-auto rounded-xl ring-1 ring-border">
         <table className="w-full text-sm">
-          <thead className="bg-muted/60 text-left text-xs font-semibold text-muted-foreground uppercase">
+          <thead className="bg-primary/[0.035] text-left text-xs font-semibold text-foreground">
             <tr>
               <th scope="col" className="w-10 px-3 py-2">
                 No
@@ -70,11 +70,20 @@ function AnswerKey({ q }: { q: Question }) {
         <li
           key={o.id}
           className={cn(
-            'flex items-start gap-2 rounded-lg px-3 py-2 text-sm ring-1 ring-border',
-            o.is_true && 'bg-success/8 ring-success/30'
+            'flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm ring-1 ring-border',
+            o.is_true && 'bg-success/8 ring-success/35'
           )}
         >
-          <span className="font-semibold">{q.type_question_id === 3 ? '' : `${LETTERS[i]}.`}</span>
+          {q.type_question_id !== 3 && (
+            <span
+              className={cn(
+                'grid size-7 shrink-0 place-items-center rounded-lg text-xs font-bold',
+                o.is_true ? 'bg-success text-white' : 'bg-muted text-foreground/70'
+              )}
+            >
+              {LETTERS[i]}
+            </span>
+          )}
           <HtmlContent html={o.option_text} as="span" className="flex-1" />
           {o.is_true && (
             <Iconify
@@ -112,11 +121,11 @@ export function QuestionCard({
   return (
     <article
       className={cn(
-        'rounded-xl p-4 ring-1 ring-border transition-colors md:p-5',
-        selected && 'bg-primary/4 ring-2 ring-primary/50'
+        'overflow-hidden rounded-2xl bg-card ring-1 ring-border transition-[box-shadow,background-color] duration-150 hover:shadow-card-hover',
+        selected && 'bg-primary/[0.03] ring-2 ring-primary/60'
       )}
     >
-      <header className="flex flex-wrap items-center gap-2">
+      <header className="flex flex-wrap items-center gap-2.5 border-b border-border bg-muted/40 px-4 py-2.5 md:px-5">
         {!locked && (
           <Checkbox
             checked={selected}
@@ -125,12 +134,14 @@ export function QuestionCard({
             className="mr-1"
           />
         )}
-        <span className="grid size-8 place-items-center rounded-lg bg-primary/10 text-sm font-semibold text-primary">
+        <span className="grid size-8 place-items-center rounded-xl bg-primary text-sm font-bold text-primary-foreground tabular-nums">
           {no}
         </span>
         <StatusPill tone="secondary">{questionTypeName(q.type_question_id)}</StatusPill>
         {q.source_question_id && (
-          <span className="text-xs text-muted-foreground">Dari Solutest</span>
+          <StatusPill tone="neutral" icon="solar:import-linear">
+            Solutest
+          </StatusPill>
         )}
         <div className={cn('ml-auto flex gap-1', locked && 'hidden')}>
           <Tooltip>
@@ -150,7 +161,7 @@ export function QuestionCard({
                 size="icon-sm"
                 onClick={onDelete}
                 aria-label={`Hapus soal ${no}`}
-                className="hover:text-destructive"
+                className="hover:bg-destructive/10 hover:text-destructive"
               >
                 <Iconify icon="solar:trash-bin-trash-linear" size={17} />
               </Button>
@@ -160,52 +171,60 @@ export function QuestionCard({
         </div>
       </header>
 
-      {q.competency_name && (
-        <dl className="mt-3 grid gap-1 rounded-lg bg-muted/50 px-3 py-2 text-xs sm:grid-cols-[auto_1fr] sm:gap-x-3">
-          <dt className="font-semibold text-muted-foreground">Kompetensi</dt>
-          <dd>{q.competency_name}</dd>
-          {q.sub_competency_name && (
-            <>
-              <dt className="font-semibold text-muted-foreground">Sub kompetensi</dt>
-              <dd>{q.sub_competency_name}</dd>
-            </>
-          )}
-        </dl>
-      )}
-      {q.text && (
-        <div className="mt-3 rounded-lg border-l-4 border-secondary/40 bg-muted/50 p-3 text-sm">
-          <HtmlContent html={q.text} />
-        </div>
-      )}
-      <HtmlContent html={q.question_text} className="mt-3" />
-      {q.attachments
-        .filter((a) => a.type === 'image')
-        .map((a) => (
-          <img
-            key={a.path}
-            src={a.path}
-            alt="Lampiran soal"
-            className="mt-2 max-h-56 rounded-lg ring-1 ring-border"
-          />
-        ))}
-      <div className="mt-3">
-        <AnswerKey q={q} />
-      </div>
-      {q.description && (
-        <Collapsible className="mt-3">
-          <CollapsibleTrigger className="group flex items-center gap-1 text-sm font-medium text-primary">
-            Pembahasan
-            <Iconify
-              icon="solar:alt-arrow-down-linear"
-              size={16}
-              className="transition-transform group-data-[state=open]:rotate-180"
+      <div className="p-4 md:p-5">
+        {q.competency_name && (
+          <div className="mb-3 flex flex-wrap gap-1.5 text-xs">
+            <span className="inline-flex items-center gap-1 rounded-full bg-info/10 px-2.5 py-1 font-semibold text-info">
+              <Iconify icon="solar:target-linear" size={13} />
+              {q.competency_name}
+            </span>
+            {q.sub_competency_name && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 font-medium text-foreground/75">
+                {q.sub_competency_name}
+              </span>
+            )}
+          </div>
+        )}
+        {q.text && (
+          <div className="mb-3 rounded-xl bg-secondary/8 p-3.5 text-sm">
+            <p className="mb-1.5 inline-flex items-center gap-1 text-xs font-bold text-secondary-ink">
+              <Iconify icon="solar:book-2-linear" size={13} />
+              Bacaan
+            </p>
+            <HtmlContent html={q.text} />
+          </div>
+        )}
+        <HtmlContent html={q.question_text} className="text-[0.95rem]" />
+        {q.attachments
+          .filter((a) => a.type === 'image')
+          .map((a) => (
+            <img
+              key={a.path}
+              src={a.path}
+              alt="Lampiran soal"
+              className="mt-2 max-h-56 rounded-lg ring-1 ring-border"
             />
-          </CollapsibleTrigger>
-          <CollapsibleContent className="mt-2 rounded-lg bg-muted/60 p-3 text-sm">
-            <HtmlContent html={q.description} />
-          </CollapsibleContent>
-        </Collapsible>
-      )}
+          ))}
+        <div className="mt-4">
+          <AnswerKey q={q} />
+        </div>
+        {q.description && (
+          <Collapsible className="mt-4">
+            <CollapsibleTrigger className="group inline-flex items-center gap-1.5 rounded-full bg-primary/8 px-3 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/15">
+              <Iconify icon="solar:lightbulb-minimalistic-linear" size={14} />
+              Pembahasan
+              <Iconify
+                icon="solar:alt-arrow-down-linear"
+                size={16}
+                className="transition-transform group-data-[state=open]:rotate-180"
+              />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-2 rounded-xl bg-primary/[0.04] p-3.5 text-sm">
+              <HtmlContent html={q.description} />
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+      </div>
     </article>
   );
 }

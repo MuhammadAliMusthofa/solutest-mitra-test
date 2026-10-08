@@ -110,7 +110,7 @@ export function PengaturanContainer() {
 
       <div className="grid gap-6 xl:grid-cols-[1fr_440px]">
         <Tabs defaultValue="profil" className="gap-4">
-          <TabsList className="h-11 w-full justify-start rounded-xl bg-card p-1 shadow-card sm:w-fit">
+          <TabsList className="h-12 w-full justify-start bg-card p-1.5 shadow-card ring-0 sm:w-fit">
             <TabsTrigger value="profil" className="h-9 px-4">
               <Iconify icon="solar:buildings-2-linear" size={18} />
               Profil & logo

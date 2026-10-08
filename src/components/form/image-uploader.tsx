@@ -56,9 +56,14 @@ export function ImageUploader({
 
   return (
     <div className={cn('flex flex-wrap items-center gap-4', className)}>
-      <div
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        disabled={upload.isPending}
+        aria-label={value ? 'Ganti gambar' : label}
         className={cn(
-          'grid shrink-0 place-items-center overflow-hidden bg-muted ring-1 ring-border',
+          'group/drop grid shrink-0 place-items-center overflow-hidden border-2 border-dashed border-primary/25 bg-primary/[0.03] transition-colors hover:border-primary/60 hover:bg-primary/[0.06] focus-visible:ring-4 focus-visible:ring-primary/20 focus-visible:outline-none',
+          value && 'border-solid border-border bg-card',
           shape === 'square' && 'size-24 rounded-xl',
           shape === 'circle' && 'size-24 rounded-full',
           shape === 'wide' && 'h-28 w-48 rounded-xl'
@@ -69,9 +74,13 @@ export function ImageUploader({
         ) : value ? (
           <img src={value} alt="Pratinjau" className="size-full object-contain p-1" />
         ) : (
-          <Iconify icon="solar:gallery-add-linear" size={28} className="text-muted-foreground" />
+          <Iconify
+            icon="solar:gallery-add-linear"
+            size={30}
+            className="text-primary/60 transition-transform group-hover/drop:scale-110"
+          />
         )}
-      </div>
+      </button>
       <div className="space-y-2">
         <input
           ref={inputRef}
@@ -87,7 +96,7 @@ export function ImageUploader({
         <div className="flex flex-wrap gap-2">
           <Button
             type="button"
-            variant="outline"
+            variant="soft"
             size="sm"
             onClick={() => inputRef.current?.click()}
             disabled={upload.isPending}

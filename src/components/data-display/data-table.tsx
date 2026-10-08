@@ -77,13 +77,13 @@ export function DataTable<T>({
     <div className={cn('w-full overflow-x-auto', className)}>
       <Table>
         <TableHeader>
-          <TableRow className="border-b border-border hover:bg-transparent">
+          <TableRow className="hover:bg-transparent">
             {renderExpanded && <TableHead className="w-10" aria-label="Buka detail" />}
             {columns.map((col) => (
               <TableHead
                 key={col.key}
                 className={cn(
-                  'h-11 text-xs font-semibold tracking-wide whitespace-nowrap text-muted-foreground uppercase',
+                  'whitespace-nowrap',
                   alignClass(col.align),
                   col.hideOnMobile && 'hidden md:table-cell',
                   col.className
@@ -132,9 +132,9 @@ export function DataTable<T>({
                   <TableRow
                     onClick={onRowClick ? () => onRowClick(row) : undefined}
                     className={cn(
-                      'border-b border-border/70',
+                      'group/row',
                       (onRowClick || renderExpanded) && 'cursor-pointer',
-                      isOpen && 'bg-muted/50'
+                      isOpen && 'bg-primary/[0.04] hover:bg-primary/[0.04]'
                     )}
                   >
                     {renderExpanded && (
@@ -147,7 +147,11 @@ export function DataTable<T>({
                             e.stopPropagation();
                             toggle(key);
                           }}
-                          className="grid size-8 place-items-center rounded-full hover:bg-primary/10 hover:text-primary"
+                          className={cn(
+                            'grid size-8 place-items-center rounded-full transition-colors hover:bg-primary/10 hover:text-primary',
+                            isOpen &&
+                              'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground'
+                          )}
                         >
                           <Iconify
                             icon="solar:alt-arrow-down-linear"
@@ -161,7 +165,7 @@ export function DataTable<T>({
                       <TableCell
                         key={col.key}
                         className={cn(
-                          'py-3.5 text-sm',
+                          'py-3.5 text-sm text-foreground/90',
                           alignClass(col.align),
                           col.hideOnMobile && 'hidden md:table-cell',
                           col.className
@@ -172,7 +176,7 @@ export function DataTable<T>({
                     ))}
                   </TableRow>
                   {renderExpanded && isOpen && (
-                    <TableRow className="bg-muted/30 hover:bg-muted/30">
+                    <TableRow className="bg-primary/[0.025] hover:bg-primary/[0.025]">
                       <TableCell colSpan={colCount} className="p-0">
                         <div className="px-4 py-4 md:px-12">{renderExpanded(row)}</div>
                       </TableCell>

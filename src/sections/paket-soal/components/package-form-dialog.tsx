@@ -10,6 +10,7 @@ import { Button } from 'src/components/ui/button';
 import { Switch } from 'src/components/ui/switch';
 import {
   Dialog,
+  DialogIcon,
   DialogTitle,
   DialogFooter,
   DialogHeader,
@@ -103,6 +104,9 @@ export function PackageFormDialog({ open, onOpenChange, initial, onSaved }: Prop
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
+          <DialogIcon>
+            <Iconify icon="solar:box-linear" size={24} />
+          </DialogIcon>
           <DialogTitle>{initial ? 'Ubah paket soal' : 'Buat paket soal'}</DialogTitle>
           <DialogDescription>Kode paket dibuat otomatis setelah paket disimpan.</DialogDescription>
         </DialogHeader>
@@ -178,7 +182,7 @@ export function PackageFormDialog({ open, onOpenChange, initial, onSaved }: Prop
           </div>
           <label
             htmlFor="paket-score"
-            className="flex items-center justify-between gap-3 rounded-lg bg-muted/50 px-4 py-3"
+            className="flex items-center justify-between gap-3 rounded-2xl bg-muted/60 px-4 py-3.5"
           >
             <span>
               <span className="block text-sm font-medium">Tampilkan nilai ke siswa</span>
@@ -190,7 +194,7 @@ export function PackageFormDialog({ open, onOpenChange, initial, onSaved }: Prop
           </label>
           <label
             htmlFor="paket-cheat"
-            className="flex items-center justify-between gap-3 rounded-lg bg-muted/50 px-4 py-3"
+            className="flex items-center justify-between gap-3 rounded-2xl bg-muted/60 px-4 py-3.5"
           >
             <span>
               <span className="block text-sm font-medium">Deteksi kecurangan</span>

@@ -175,7 +175,7 @@ export function StudentScoresContainer() {
                   <div key={sub.name} className="rounded-xl bg-card p-4 ring-1 ring-border">
                     <p className="text-sm text-muted-foreground">{sub.name}</p>
                     <div className="mt-1 flex items-center justify-between">
-                      <span className="text-xl font-semibold tabular-nums">
+                      <span className="text-xl font-bold tabular-nums">
                         {formatScore(sub.total_score)}
                       </span>
                       <PredicateBadge predicate={sub.predicate} />

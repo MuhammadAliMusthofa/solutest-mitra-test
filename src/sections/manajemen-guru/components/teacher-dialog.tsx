@@ -14,6 +14,7 @@ import { Label } from 'src/components/ui/label';
 import { Button } from 'src/components/ui/button';
 import {
   Dialog,
+  DialogIcon,
   DialogTitle,
   DialogFooter,
   DialogHeader,
@@ -102,6 +103,9 @@ export function TeacherDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
+          <DialogIcon>
+            <Iconify icon="solar:square-academic-cap-linear" size={24} />
+          </DialogIcon>
           <DialogTitle>{creating ? 'Tambah guru' : 'Ubah sekolah guru'}</DialogTitle>
           <DialogDescription>
             Guru mengelola dan memantau hasil tryout siswa di sekolahnya saja.

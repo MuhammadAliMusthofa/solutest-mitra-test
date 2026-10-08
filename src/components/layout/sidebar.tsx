@@ -24,15 +24,19 @@ import { BrandMark } from './brand-mark';
  * diseragamkan lewat token --sidebar-accent (lihat globals.css).
  */
 const ACCENTS = [
-  'data-[active=true]:bg-primary/10 data-[active=true]:text-primary hover:bg-primary/10 hover:text-primary',
-  'data-[active=true]:bg-brand-accent/22 data-[active=true]:text-[color-mix(in_oklab,var(--brand-accent)_45%,black)] hover:bg-brand-accent/22 hover:text-[color-mix(in_oklab,var(--brand-accent)_45%,black)]',
-  'data-[active=true]:bg-secondary/14 data-[active=true]:text-[color-mix(in_oklab,var(--secondary)_80%,black)] hover:bg-secondary/14 hover:text-[color-mix(in_oklab,var(--secondary)_80%,black)]',
-  'data-[active=true]:bg-info/12 data-[active=true]:text-info hover:bg-info/12 hover:text-info',
-  'data-[active=true]:bg-primary/7 data-[active=true]:text-[color-mix(in_oklab,var(--primary)_75%,black)] hover:bg-primary/7 hover:text-[color-mix(in_oklab,var(--primary)_75%,black)]',
+  'hover:bg-primary/10 hover:text-primary',
+  'hover:bg-brand-accent/22 hover:text-accent-ink',
+  'hover:bg-secondary/14 hover:text-secondary-ink',
+  'hover:bg-info/12 hover:text-info',
+  'hover:bg-primary/7 hover:text-[color-mix(in_oklab,var(--primary)_75%,black)]',
 ];
 
+/** Item aktif: pill primary penuh + bayangan berwarna (gaya Spike). */
+const ACTIVE =
+  'data-[active=true]:bg-sidebar-primary data-[active=true]:text-sidebar-primary-foreground data-[active=true]:shadow-btn data-[active=true]:hover:bg-sidebar-primary data-[active=true]:hover:text-sidebar-primary-foreground';
+
 const UNIFORM =
-  'in-data-[sidebar-style=brand]:data-[active=true]:bg-sidebar-accent in-data-[sidebar-style=brand]:data-[active=true]:text-sidebar-accent-foreground in-data-[sidebar-style=brand]:hover:bg-sidebar-accent in-data-[sidebar-style=brand]:hover:text-sidebar-accent-foreground in-data-[sidebar-style=dark]:data-[active=true]:bg-sidebar-accent in-data-[sidebar-style=dark]:data-[active=true]:text-sidebar-accent-foreground in-data-[sidebar-style=dark]:hover:bg-sidebar-accent in-data-[sidebar-style=dark]:hover:text-sidebar-accent-foreground';
+  'in-data-[sidebar-style=brand]:hover:bg-sidebar-accent in-data-[sidebar-style=brand]:hover:text-sidebar-accent-foreground in-data-[sidebar-style=dark]:hover:bg-sidebar-accent in-data-[sidebar-style=dark]:hover:text-sidebar-accent-foreground';
 
 interface Props {
   sections: NavSection[];
@@ -103,9 +107,9 @@ function SidebarItem({
   const childActive = item.children?.some((c) => c.path === activePath) ?? false;
   const active = item.path === activePath || childActive;
   const [open, setOpen] = useState(childActive);
-  const accent = cn(ACCENTS[item.accent % ACCENTS.length], UNIFORM);
+  const accent = cn(ACCENTS[item.accent % ACCENTS.length], ACTIVE, UNIFORM);
   const base =
-    'flex h-11 w-full items-center gap-3 rounded-full px-4 text-[0.92rem] font-medium text-sidebar-foreground transition-colors duration-150 outline-none focus-visible:ring-3 focus-visible:ring-sidebar-ring/40';
+    'flex h-11 w-full items-center gap-3 rounded-full px-4 text-[0.92rem] font-semibold text-sidebar-foreground/85 transition-[background-color,color,box-shadow] duration-150 outline-none focus-visible:ring-3 focus-visible:ring-sidebar-ring/40';
 
   const content = (
     <>
@@ -137,7 +141,15 @@ function SidebarItem({
 
   return (
     <Collapsible open={open || childActive} onOpenChange={setOpen}>
-      <CollapsibleTrigger data-active={active} className={cn(base, accent)}>
+      <CollapsibleTrigger
+        data-active={false}
+        className={cn(
+          base,
+          accent,
+          active &&
+            'bg-primary/8 text-primary in-data-[sidebar-style=brand]:bg-sidebar-accent in-data-[sidebar-style=dark]:bg-sidebar-accent'
+        )}
+      >
         {content}
         <Iconify
           icon="solar:alt-arrow-right-linear"
@@ -187,7 +199,7 @@ function SidebarUser({ collapsed }: { collapsed: boolean }) {
     <div className="p-4 pt-0">
       <div
         className={cn(
-          'flex items-center gap-3 rounded-2xl bg-sidebar-accent/70 p-3',
+          'flex items-center gap-3 rounded-2xl bg-[color-mix(in_srgb,var(--primary)_7%,var(--sidebar))] p-3 in-data-[sidebar-style=brand]:bg-sidebar-accent in-data-[sidebar-style=dark]:bg-sidebar-accent',
           collapsed && 'flex-col p-2'
         )}
       >

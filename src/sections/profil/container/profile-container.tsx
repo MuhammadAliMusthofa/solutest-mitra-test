@@ -57,7 +57,7 @@ export function ProfileContainer({ homeHref }: { homeHref: string }) {
               <span className="rounded-full ring-4 ring-card">
                 <UserAvatar name={p.full_name} src={p.image_profile} size={96} />
               </span>
-              <h2 className="mt-3 text-lg font-semibold">{p.full_name}</h2>
+              <h2 className="mt-3 text-lg font-bold">{p.full_name}</h2>
               <p className="text-sm text-muted-foreground">
                 {role ? ROLE_LABEL[role] : ''} · {branding.short_name || branding.name}
               </p>

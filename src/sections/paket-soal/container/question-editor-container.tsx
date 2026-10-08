@@ -31,11 +31,11 @@ import { AnswerEditor } from '../components/answer-editor';
 import { useMasterData, usePackageDetail, usePaketMutations } from '../hooks/use-paket';
 import { emptyForm, formToBody, validateForm, questionToForm } from '../helpers/question-form';
 
-const TYPE_ICONS: Record<QuestionType, string> = {
-  1: 'solar:list-check-linear',
-  2: 'solar:checklist-minimalistic-linear',
-  3: 'solar:check-square-linear',
-  9: 'solar:checklist-linear',
+const TYPE_META: Record<QuestionType, { icon: string; hint: string }> = {
+  1: { icon: 'solar:list-check-bold', hint: 'Satu jawaban benar' },
+  2: { icon: 'solar:checklist-minimalistic-bold', hint: 'Lebih dari satu jawaban benar' },
+  3: { icon: 'solar:check-square-bold', hint: 'Satu pernyataan Benar / Salah' },
+  9: { icon: 'solar:checklist-bold', hint: 'Tabel beberapa pernyataan' },
 };
 
 /** Buat / ubah satu soal dalam paket. `questionId` kosong = soal baru. */
@@ -113,10 +113,14 @@ export function QuestionEditorContainer() {
         ]}
       />
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
+      <div className="grid items-start gap-6 xl:grid-cols-[1fr_340px]">
         <div className="space-y-6">
-          <SectionCard title="Tipe soal">
-            <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+          <SectionCard
+            title="Tipe soal"
+            description="Menentukan cara siswa menjawab."
+            icon="solar:widget-4-linear"
+          >
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               {QUESTION_TYPES.map((t) => (
                 <button
                   key={t.id}
@@ -125,30 +129,76 @@ export function QuestionEditorContainer() {
                   disabled={editing}
                   onClick={() => update({ type: t.id })}
                   className={cn(
-                    'flex items-center gap-2 rounded-xl px-3 py-3 text-left text-sm font-medium ring-1 ring-border transition-colors hover:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60',
-                    form.type === t.id && 'bg-primary/8 text-primary ring-2 ring-primary'
+                    'group/type relative flex flex-col items-start gap-3 rounded-2xl p-4 text-left ring-1 ring-border transition-[background-color,box-shadow] duration-150 hover:bg-primary/[0.03] hover:ring-primary/45 focus-visible:ring-4 focus-visible:ring-primary/25 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent',
+                    form.type === t.id && 'bg-primary/[0.06] ring-2 ring-primary hover:ring-primary'
                   )}
                 >
-                  <Iconify icon={TYPE_ICONS[t.id]} size={20} />
-                  {t.name}
+                  <span
+                    className={cn(
+                      'grid size-10 place-items-center rounded-xl transition-colors',
+                      form.type === t.id
+                        ? 'bg-primary text-primary-foreground shadow-btn'
+                        : 'bg-muted text-foreground/60 group-hover/type:bg-primary/10 group-hover/type:text-primary'
+                    )}
+                  >
+                    <Iconify icon={TYPE_META[t.id].icon} size={20} />
+                  </span>
+                  <span>
+                    <span
+                      className={cn(
+                        'block text-sm font-bold',
+                        form.type === t.id && 'text-primary'
+                      )}
+                    >
+                      {t.name}
+                    </span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                      {TYPE_META[t.id].hint}
+                    </span>
+                  </span>
+                  {form.type === t.id && (
+                    <Iconify
+                      icon="solar:check-circle-bold"
+                      size={20}
+                      className="absolute top-3 right-3 text-primary"
+                    />
+                  )}
                 </button>
               ))}
             </div>
             {editing && (
-              <p className="mt-2 text-xs text-muted-foreground">
+              <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Iconify icon="solar:lock-keyhole-linear" size={14} />
                 Tipe soal tidak bisa diubah setelah dibuat.
               </p>
             )}
           </SectionCard>
 
-          <SectionCard title="Soal">
+          <SectionCard
+            title="Soal"
+            description="Pertanyaan, bacaan pendukung, dan gambar."
+            icon="solar:document-text-linear"
+            tone="info"
+          >
             <div className="space-y-5">
-              <div className="flex items-center justify-between gap-3 rounded-lg bg-muted/50 px-4 py-3">
-                <div>
-                  <Label htmlFor="use-stimulus">Gunakan stimulus / bacaan</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Ditampilkan di panel kiri saat siswa mengerjakan.
-                  </p>
+              <div
+                className={cn(
+                  'flex items-center justify-between gap-3 rounded-2xl px-4 py-3.5 ring-1 transition-colors',
+                  form.useStimulus
+                    ? 'bg-secondary/8 ring-secondary/30'
+                    : 'bg-muted/50 ring-transparent'
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-card text-secondary-ink shadow-card">
+                    <Iconify icon="solar:book-2-linear" size={18} />
+                  </span>
+                  <div>
+                    <Label htmlFor="use-stimulus">Gunakan stimulus / bacaan</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Ditampilkan di panel kiri saat siswa mengerjakan.
+                    </p>
+                  </div>
                 </div>
                 <Switch
                   id="use-stimulus"
@@ -191,11 +241,21 @@ export function QuestionEditorContainer() {
             </div>
           </SectionCard>
 
-          <SectionCard title="Kunci jawaban">
+          <SectionCard
+            title="Kunci jawaban"
+            description="Tandai jawaban yang benar."
+            icon="solar:key-minimalistic-square-linear"
+            tone="success"
+          >
             <AnswerEditor form={form} update={update} />
           </SectionCard>
 
-          <SectionCard title="Pembahasan">
+          <SectionCard
+            title="Pembahasan"
+            description="Tampil di halaman pembahasan siswa."
+            icon="solar:lightbulb-minimalistic-linear"
+            tone="warning"
+          >
             <RichTextEditor
               value={form.explanation}
               onChange={(explanation) => update({ explanation })}
@@ -206,7 +266,12 @@ export function QuestionEditorContainer() {
         </div>
 
         <div className="space-y-6">
-          <SectionCard title="Pengaturan" className="xl:sticky xl:top-28">
+          <SectionCard
+            title="Pengaturan"
+            icon="solar:settings-linear"
+            tone="secondary"
+            className="xl:sticky xl:top-28"
+          >
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="q-competency">
@@ -292,9 +357,18 @@ export function QuestionEditorContainer() {
                   {error}
                 </p>
               )}
-              <div className="flex flex-col gap-2">
-                <Button onClick={() => submit(false)} disabled={saveQuestion.isPending || locked}>
-                  {saveQuestion.isPending && <Iconify icon="svg-spinners:180-ring" size={16} />}
+              <div className="flex flex-col gap-2 border-t border-dashed border-border pt-4">
+                <Button
+                  size="lg"
+                  onClick={() => submit(false)}
+                  disabled={saveQuestion.isPending || locked}
+                >
+                  <Iconify
+                    icon={
+                      saveQuestion.isPending ? 'svg-spinners:180-ring' : 'solar:diskette-linear'
+                    }
+                    size={18}
+                  />
                   Simpan soal
                 </Button>
                 {!editing && (

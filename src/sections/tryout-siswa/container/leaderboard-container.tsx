@@ -20,36 +20,60 @@ import { SearchInput } from 'src/components/form/search-input';
 import { SelectField } from 'src/components/form/select-field';
 import { EmptyState } from 'src/components/feedback/empty-state';
 import { DataTable } from 'src/components/data-display/data-table';
-import { FilterBar } from 'src/components/data-display/filter-bar';
 import { UserAvatar } from 'src/components/data-display/user-avatar';
-import { PageHeader } from 'src/components/data-display/page-header';
+import { HeroBanner } from 'src/components/data-display/hero-banner';
 import type { Column } from 'src/components/data-display/data-table';
 import { SectionCard } from 'src/components/data-display/section-card';
 import { TablePagination } from 'src/components/data-display/table-pagination';
 
 import { RankBadge } from 'src/sections/analitik/components/analytics-parts';
 
+/** Warna podium (palet medali tetap, tidak ikut tema): 2 biru, 1 oranye, 3 ungu. */
 const PODIUM = [
-  { place: 2, height: 'h-24', tone: 'bg-[#E4E8ED]' },
-  { place: 1, height: 'h-32', tone: 'bg-[#F6E7B8]' },
-  { place: 3, height: 'h-20', tone: 'bg-[#F1DCCB]' },
+  { place: 2, height: 'h-36 sm:h-44', tone: 'bg-secondary text-secondary-foreground', avatar: 64 },
+  { place: 1, height: 'h-48 sm:h-56', tone: 'bg-primary text-primary-foreground', avatar: 84 },
+  {
+    place: 3,
+    height: 'h-28 sm:h-36',
+    tone: 'bg-brand-accent text-brand-accent-foreground',
+    avatar: 64,
+  },
 ];
+
+const formatDuration = (sec: number | null) => {
+  if (sec === null) return '-';
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const d = sec % 60;
+  return [h, m, d].map((n) => String(n).padStart(2, '0')).join(':');
+};
 
 function Podium({ rows }: { rows: LeaderboardRow[] }) {
   return (
-    <div className="flex items-end justify-center gap-3 sm:gap-6">
-      {PODIUM.map(({ place, height, tone }) => {
+    <div className="flex items-end justify-center gap-3 pt-4 sm:gap-8">
+      {PODIUM.map(({ place, height, tone, avatar }) => {
         const r = rows.find((x) => x.rank === place);
-        if (!r) return <div key={place} className="w-24" />;
+        if (!r) return <div key={place} className="w-24 sm:w-36" />;
         return (
-          <div key={place} className="flex w-24 flex-col items-center text-center sm:w-32">
-            <UserAvatar name={r.full_name} size={place === 1 ? 64 : 52} />
-            <p className="mt-2 line-clamp-1 text-sm font-semibold">{r.full_name}</p>
-            <p className="line-clamp-1 text-xs text-muted-foreground">{r.school}</p>
-            <p className="mt-1 font-semibold tabular-nums">{formatScore(r.score)}</p>
+          <div key={place} className="flex w-24 flex-col items-center text-center sm:w-40">
+            <UserAvatar name={r.full_name} size={avatar} className="shadow-card ring-4 ring-card" />
+            <p className="mt-3 line-clamp-2 text-sm leading-tight font-extrabold sm:text-base">
+              {r.full_name}
+            </p>
+            <p className="mt-1 line-clamp-2 text-[0.7rem] leading-tight text-muted-foreground uppercase sm:text-xs">
+              {r.school}
+            </p>
+            <p className="mt-2 flex items-center gap-1 text-xs font-semibold tabular-nums sm:text-sm">
+              <Iconify icon="solar:star-circle-bold" size={15} className="text-warning" />
+              {formatScore(r.score)}
+            </p>
+            <p className="mt-0.5 flex items-center gap-1 text-xs font-medium tabular-nums sm:text-sm">
+              <Iconify icon="solar:clock-circle-bold" size={15} className="text-warning" />
+              {formatDuration(r.duration_seconds)}
+            </p>
             <div
               className={cn(
-                'mt-2 grid w-full place-items-center rounded-t-xl text-2xl font-bold text-foreground/70',
+                'mt-3 grid w-full place-items-center rounded-t-2xl text-5xl font-extrabold shadow-[0_-6px_20px_-12px_rgb(0_0_0/0.35)] sm:text-6xl',
                 height,
                 tone
               )}
@@ -117,10 +141,7 @@ export function LeaderboardContainer() {
       key: 'duration',
       header: 'Waktu',
       hideOnMobile: true,
-      cell: (r) =>
-        r.duration_seconds === null
-          ? '-'
-          : `${Math.floor(r.duration_seconds / 60)}m ${r.duration_seconds % 60}d`,
+      cell: (r) => <span className="tabular-nums">{formatDuration(r.duration_seconds)}</span>,
     },
     {
       key: 'score',
@@ -130,11 +151,15 @@ export function LeaderboardContainer() {
     },
   ];
 
+  const resetFilters = () => setF({ scope: 'all', search: '' });
+
   return (
     <>
-      <PageHeader
+      <HeroBanner
         title="Leaderboard"
-        crumbs={[{ label: 'Beranda', href: SISWA_PATHS.root }, { label: 'Leaderboard' }]}
+        description="Lihat peringkatmu di antara peserta tryout lain dan terus tingkatkan skormu."
+        crumbs={[{ label: 'Tryout', href: SISWA_PATHS.tryout }, { label: 'Leaderboard' }]}
+        icon="solar:cup-star-bold-duotone"
       />
       {options.data?.length === 0 ? (
         <SectionCard>
@@ -145,67 +170,79 @@ export function LeaderboardContainer() {
           />
         </SectionCard>
       ) : (
-        <div className="space-y-6">
-          <SectionCard>
-            <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <SelectField
-                aria-label="Pilih tryout"
-                value={f.paket}
-                onChange={(paket) => setF({ paket })}
-                options={(options.data ?? []).map((o) => ({
-                  value: String(o.schedule_id),
-                  label: o.title,
-                }))}
-                placeholder="Pilih tryout"
-                className="sm:w-80"
-              />
-              <SelectField
-                aria-label="Cakupan peringkat"
-                value={f.scope}
-                onChange={(scope) => setF({ scope })}
-                options={[
-                  { value: 'all', label: 'Semua sekolah' },
-                  { value: 'school', label: 'Sekolahku' },
-                ]}
-                className="sm:w-44"
-              />
-              {me && (
-                <div className="flex items-center gap-3 rounded-xl bg-primary/8 px-4 py-2">
-                  <Iconify icon="solar:user-rounded-linear" size={20} className="text-primary" />
-                  <span className="text-sm">
-                    Peringkatmu <span className="font-semibold">#{me.rank}</span> · skor{' '}
-                    <span className="font-semibold tabular-nums">{formatScore(me.score)}</span>
-                  </span>
-                </div>
-              )}
+        <div className="space-y-8">
+          <div className="flex flex-col gap-3 rounded-card bg-card p-3 shadow-card md:flex-row md:items-center">
+            <SelectField
+              aria-label="Pilih tryout"
+              value={f.paket}
+              onChange={(paket) => setF({ paket })}
+              options={(options.data ?? []).map((o) => ({
+                value: String(o.schedule_id),
+                label: o.title,
+              }))}
+              placeholder="Pilih tryout"
+              className="md:w-80"
+            />
+            <SelectField
+              aria-label="Cakupan peringkat"
+              value={f.scope}
+              onChange={(scope) => setF({ scope })}
+              options={[
+                { value: 'all', label: 'Semua sekolah' },
+                { value: 'school', label: 'Sekolahku' },
+              ]}
+              className="md:w-52"
+            />
+            <SearchInput
+              value={f.search}
+              onChange={(search) => setF({ search })}
+              placeholder="Cari nama siswa"
+              className="md:flex-1"
+            />
+            <button
+              type="button"
+              onClick={resetFilters}
+              aria-label="Atur ulang filter"
+              className="grid size-11 shrink-0 place-items-center self-end rounded-full bg-destructive/10 text-destructive transition-colors hover:bg-destructive hover:text-white md:self-auto"
+            >
+              <Iconify icon="solar:restart-bold" size={20} />
+            </button>
+          </div>
+
+          {query.data && Number(f.page) === 1 && !f.search && query.data.data.length > 0 && (
+            <Podium rows={query.data.data.slice(0, 3)} />
+          )}
+
+          {me && (
+            <div className="flex flex-wrap items-center gap-4 rounded-card bg-primary/20 px-5 py-4">
+              <UserAvatar name={me.full_name} size={44} />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm text-foreground/70">Peringkatmu</p>
+                <p className="truncate font-bold">{me.full_name}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-extrabold tabular-nums">#{me.rank}</p>
+                <p className="text-xs font-semibold text-foreground/70 tabular-nums">
+                  Skor {formatScore(me.score)}
+                </p>
+              </div>
             </div>
-            {query.data && Number(f.page) === 1 && !f.search && (
-              <Podium rows={query.data.data.slice(0, 3)} />
-            )}
-          </SectionCard>
-          <SectionCard flush>
-            <FilterBar>
-              <SearchInput
-                value={f.search}
-                onChange={(search) => setF({ search })}
-                placeholder="Cari nama…"
-              />
-            </FilterBar>
-            <div className="mt-4">
-              <DataTable
-                columns={columns}
-                rows={query.data?.data}
-                rowKey={(r) => `${r.rank}-${r.user_id}`}
-                loading={query.isPending && packageId > 0}
-                error={query.error}
-                onRetry={() => query.refetch()}
-                empty={{ title: 'Belum ada peserta' }}
-              />
-              <TablePagination
-                meta={query.data?.pagination}
-                onPageChange={(page) => setF({ page })}
-              />
-            </div>
+          )}
+
+          <SectionCard flush title="Peringkat lengkap" icon="solar:ranking-linear">
+            <DataTable
+              columns={columns}
+              rows={query.data?.data}
+              rowKey={(r) => `${r.rank}-${r.user_id}`}
+              loading={query.isPending && packageId > 0}
+              error={query.error}
+              onRetry={() => query.refetch()}
+              empty={{ title: 'Belum ada peserta' }}
+            />
+            <TablePagination
+              meta={query.data?.pagination}
+              onPageChange={(page) => setF({ page })}
+            />
           </SectionCard>
         </div>
       )}

@@ -189,7 +189,7 @@ export function ProgressListContainer({ kind }: { kind: ProgressKind }) {
               </span>
               <span>
                 <span className="block text-xs text-muted-foreground">{TREND_LABEL[c.status]}</span>
-                <span className="block text-xl font-semibold tabular-nums">
+                <span className="block text-xl font-bold tabular-nums">
                   {all.isPending ? '…' : c.count}
                 </span>
               </span>

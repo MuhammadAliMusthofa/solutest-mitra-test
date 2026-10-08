@@ -1,10 +1,8 @@
 'use client';
 
-import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 
-import { Button } from 'src/components/ui/button';
 import { Skeleton } from 'src/components/ui/skeleton';
 
 import { SISWA_PATHS } from 'src/config/paths';
@@ -41,14 +39,6 @@ export function ReportContainer() {
         description={r ? `${r.title} · ${formatLongDate(r.test_date)}` : undefined}
         backHref={SISWA_PATHS.history}
         crumbs={[{ label: 'Riwayat', href: SISWA_PATHS.history }, { label: 'Laporan' }]}
-        actions={
-          <Button variant="outline" asChild>
-            <Link href={SISWA_PATHS.explanation(practiceId)}>
-              <Iconify icon="solar:book-bookmark-linear" size={18} />
-              Pembahasan
-            </Link>
-          </Button>
-        }
       />
       {query.isPending && <Skeleton className="h-96 w-full rounded-card" />}
       {query.isError && <ErrorState error={query.error} onRetry={() => query.refetch()} />}
@@ -167,7 +157,7 @@ export function ReportContainer() {
             <ol className="space-y-3">
               {r.recommendation.learning_priorities.map((p, i) => (
                 <li key={p.title} className="flex gap-3">
-                  <span className="grid size-8 shrink-0 place-items-center rounded-full bg-brand-accent/25 text-sm font-semibold">
+                  <span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary/25 text-sm font-semibold">
                     {i + 1}
                   </span>
                   <div>

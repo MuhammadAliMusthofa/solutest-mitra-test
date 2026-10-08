@@ -14,6 +14,7 @@ import { Label } from 'src/components/ui/label';
 import { Button } from 'src/components/ui/button';
 import {
   Dialog,
+  DialogIcon,
   DialogTitle,
   DialogFooter,
   DialogHeader,
@@ -121,6 +122,9 @@ export function StudentDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
+          <DialogIcon>
+            <Iconify icon="solar:user-id-linear" size={24} />
+          </DialogIcon>
           <DialogTitle>{creating ? 'Tambah siswa' : 'Ubah data siswa'}</DialogTitle>
           <DialogDescription>
             Siswa login memakai akun Solutest. Email yang sudah terdaftar memakai akun lamanya.

@@ -239,9 +239,7 @@ export function RegionalContainer() {
                       {sc.city} · {sc.region} · {sc.level}
                     </p>
                   </div>
-                  <span className="text-xl font-semibold tabular-nums">
-                    {formatScore(sc.average)}
-                  </span>
+                  <span className="text-xl font-bold tabular-nums">{formatScore(sc.average)}</span>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {sc.subjects.map((sub) => (

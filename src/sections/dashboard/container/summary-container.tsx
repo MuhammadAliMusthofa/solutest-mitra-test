@@ -16,12 +16,12 @@ import { greeting, formatScore, formatNumber, formatDateTime } from 'src/utils/f
 import { summaryService, monitoringService } from 'src/services/monitoring';
 
 import { Iconify } from 'src/components/iconify/iconify';
-import { KpiCard } from 'src/components/data-display/kpi-card';
 import { DataTable } from 'src/components/data-display/data-table';
 import { StatusPill } from 'src/components/data-display/status-pill';
 import type { Column } from 'src/components/data-display/data-table';
 import { WelcomeCard } from 'src/components/data-display/welcome-card';
 import { SectionCard } from 'src/components/data-display/section-card';
+import { KpiCard, ToneIcon, toneStyle } from 'src/components/data-display/kpi-card';
 
 import { SCHEDULE_STATUS } from 'src/sections/jadwal-tryout/helpers/schedule';
 import { PredicateBadge } from 'src/sections/_global/components/predicate-badge';
@@ -31,14 +31,16 @@ function QuotaBar({ label, used, limit }: { label: string; used: number; limit: 
   return (
     <div>
       <div className="flex justify-between text-sm">
-        <span>{label}</span>
+        <span className="font-medium text-foreground/75">{label}</span>
         <span className="font-semibold tabular-nums">
           {formatNumber(used)}/{formatNumber(limit)}
         </span>
       </div>
-      <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-muted">
+      <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-primary/10">
         <div
-          className={pct >= 90 ? 'h-full bg-warning' : 'h-full bg-primary'}
+          className={
+            pct >= 90 ? 'h-full rounded-full bg-warning' : 'h-full rounded-full bg-primary'
+          }
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -77,9 +79,19 @@ export function SummaryContainer() {
       key: 'title',
       header: 'Tryout',
       cell: (s) => (
-        <Link href={paths.hasilTryoutDetail(s.id)} className="block min-w-48">
-          <p className="font-semibold hover:text-primary">{s.title}</p>
-          <p className="font-mono text-xs text-muted-foreground">{s.code}</p>
+        <Link
+          href={paths.hasilTryoutDetail(s.id)}
+          className="group/row-link flex min-w-56 items-center gap-3"
+        >
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary transition-colors group-hover/row-link:bg-primary group-hover/row-link:text-primary-foreground">
+            <Iconify icon="solar:document-text-linear" size={20} />
+          </span>
+          <span className="min-w-0">
+            <span className="block truncate font-bold group-hover/row-link:text-primary">
+              {s.title}
+            </span>
+            <span className="block font-mono text-xs text-muted-foreground">{s.code}</span>
+          </span>
         </Link>
       ),
     },
@@ -87,13 +99,17 @@ export function SummaryContainer() {
       key: 'time',
       header: 'Waktu',
       hideOnMobile: true,
-      cell: (s) => <span className="text-xs">{formatDateTime(s.start_date)}</span>,
+      cell: (s) => (
+        <span className="text-xs text-muted-foreground">{formatDateTime(s.start_date)}</span>
+      ),
     },
     {
       key: 'submitted',
       header: 'Selesai',
       align: 'right',
-      cell: (s) => formatNumber(s.submitted_count),
+      cell: (s) => (
+        <span className="font-semibold tabular-nums">{formatNumber(s.submitted_count)}</span>
+      ),
     },
     {
       key: 'avg',
@@ -134,7 +150,7 @@ export function SummaryContainer() {
           {noSchool ? (
             <p
               role="alert"
-              className="mt-5 flex items-start gap-2 rounded-lg bg-warning/10 px-3 py-2 text-sm text-warning"
+              className="mt-5 flex items-start gap-2 rounded-xl bg-card px-3 py-2.5 text-sm text-warning shadow-card"
             >
               <Iconify icon="solar:danger-triangle-linear" size={18} className="mt-0.5" />
               Akun Anda belum terhubung ke sekolah. Hubungi admin mitra.
@@ -151,7 +167,10 @@ export function SummaryContainer() {
                 </Link>
               </Button>
               <Button variant="outline" asChild>
-                <Link href={paths.hasilTryout}>Hasil tryout</Link>
+                <Link href={paths.hasilTryout}>
+                  <Iconify icon="solar:chart-2-linear" size={18} />
+                  Hasil tryout
+                </Link>
               </Button>
             </div>
           )}
@@ -203,26 +222,34 @@ export function SummaryContainer() {
         )}
       </div>
 
-      <SectionCard title="Jadwal tryout" className="col-span-12 lg:col-span-4">
-        <ul className="space-y-3">
+      <SectionCard
+        title="Jadwal tryout"
+        icon="solar:calendar-linear"
+        tone="success"
+        className="col-span-12 lg:col-span-4"
+      >
+        <ul className="space-y-2.5">
           {(
             [
-              ['Berlangsung', schedules?.active, 'success', 'solar:play-circle-linear'],
-              ['Terjadwal', schedules?.upcoming, 'primary', 'solar:calendar-linear'],
-              ['Selesai', schedules?.ended, 'neutral', 'solar:check-circle-linear'],
+              ['Berlangsung', schedules?.active, 'success', 'solar:play-circle-bold'],
+              ['Terjadwal', schedules?.upcoming, 'primary', 'solar:calendar-bold'],
+              ['Selesai', schedules?.ended, 'secondary', 'solar:check-circle-bold'],
             ] as const
           ).map(([label, n, tone, icon]) => (
-            <li key={label} className="flex items-center justify-between">
-              <StatusPill tone={tone} icon={icon}>
-                {label}
-              </StatusPill>
-              <span className="text-lg font-semibold tabular-nums">{formatNumber(n)}</span>
+            <li
+              key={label}
+              style={toneStyle(tone)}
+              className="flex items-center gap-3 rounded-2xl bg-[color-mix(in_srgb,var(--tone)_7%,var(--card))] p-3"
+            >
+              <ToneIcon icon={icon} tone={tone} size="sm" solid />
+              <span className="text-sm font-semibold text-foreground/80">{label}</span>
+              <span className="ml-auto text-xl font-bold tabular-nums">{formatNumber(n)}</span>
             </li>
           ))}
         </ul>
         {isAdmin && admin.data?.quota && (
-          <div className="mt-6 space-y-4 border-t border-border pt-5">
-            <p className="text-xs font-semibold text-muted-foreground uppercase">Kuota akun</p>
+          <div className="mt-6 space-y-4 border-t border-dashed border-border pt-5">
+            <h3 className="text-sm font-bold">Kuota akun</h3>
             <QuotaBar label="Guru" {...admin.data.quota.guru} />
             <QuotaBar label="Siswa" {...admin.data.quota.siswa} />
           </div>
@@ -231,6 +258,8 @@ export function SummaryContainer() {
 
       <SectionCard
         title="Tryout terbaru"
+        description="5 jadwal terakhir dan capaian pesertanya"
+        icon="solar:chart-square-linear"
         className="col-span-12 lg:col-span-8"
         flush
         action={

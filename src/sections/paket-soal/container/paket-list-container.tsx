@@ -28,10 +28,11 @@ import { ErrorState } from 'src/components/feedback/error-state';
 import { StatusPill } from 'src/components/data-display/status-pill';
 import { PageHeader } from 'src/components/data-display/page-header';
 import { ConfirmDialog } from 'src/components/feedback/confirm-dialog';
-import { SectionCard } from 'src/components/data-display/section-card';
+import { ToneIcon, toneStyle } from 'src/components/data-display/kpi-card';
 import { TablePagination } from 'src/components/data-display/table-pagination';
 
 import { CatalogDialog } from '../components/catalog-dialog';
+import { subjectIcon, subjectTone } from '../helpers/subject-style';
 import { PackageFormDialog } from '../components/package-form-dialog';
 import { usePackages, useMasterData, usePaketMutations } from '../hooks/use-paket';
 
@@ -79,47 +80,59 @@ export function PaketListContainer() {
         }
       />
 
-      <SectionCard>
-        <div className="mb-5 flex flex-col gap-3 sm:flex-row">
-          <SearchInput
-            value={f.search}
-            onChange={(search) => setF({ search })}
-            placeholder="Cari judul / kode paket…"
-          />
-          <SelectField
-            aria-label="Filter mapel"
-            value={f.subject_id}
-            onChange={(subject_id) => setF({ subject_id })}
-            options={(subjects.data ?? []).map((s) => ({ value: String(s.id), label: s.name }))}
-            allLabel="Semua mapel"
-          />
-          <SelectField
-            aria-label="Filter sumber paket"
-            value={f.source}
-            onChange={(source) => setF({ source })}
-            options={[
-              { value: 'MITRA', label: 'Buatan mitra' },
-              { value: 'SOLUTEST', label: 'Salinan Solutest' },
-            ]}
-            allLabel="Semua sumber"
-          />
-        </div>
-
-        {query.isPending && (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {Array.from({ length: 6 }, (_, i) => (
-              <Skeleton key={i} className="h-44 rounded-xl" />
-            ))}
-          </div>
+      <div className="mb-6 flex flex-col gap-3 rounded-card bg-card p-4 shadow-card sm:flex-row sm:flex-wrap sm:items-center md:px-5">
+        <SearchInput
+          value={f.search}
+          onChange={(search) => setF({ search })}
+          placeholder="Cari judul / kode paket…"
+        />
+        <SelectField
+          aria-label="Filter mapel"
+          value={f.subject_id}
+          onChange={(subject_id) => setF({ subject_id })}
+          options={(subjects.data ?? []).map((s) => ({ value: String(s.id), label: s.name }))}
+          allLabel="Semua mapel"
+        />
+        <SelectField
+          aria-label="Filter sumber paket"
+          value={f.source}
+          onChange={(source) => setF({ source })}
+          options={[
+            { value: 'MITRA', label: 'Buatan mitra' },
+            { value: 'SOLUTEST', label: 'Salinan Solutest' },
+          ]}
+          allLabel="Semua sumber"
+        />
+        {query.data && (
+          <p className="text-sm text-muted-foreground sm:ml-auto">
+            <span className="font-bold text-foreground tabular-nums">
+              {query.data.pagination.total_items.toLocaleString('id-ID')}
+            </span>{' '}
+            paket
+          </p>
         )}
-        {query.isError && <ErrorState error={query.error} onRetry={() => query.refetch()} />}
-        {query.data?.data.length === 0 && (
+      </div>
+
+      {query.isPending && (
+        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 6 }, (_, i) => (
+            <Skeleton key={i} className="h-72 rounded-card" />
+          ))}
+        </div>
+      )}
+      {query.isError && (
+        <div className="rounded-card bg-card shadow-card">
+          <ErrorState error={query.error} onRetry={() => query.refetch()} />
+        </div>
+      )}
+      {query.data?.data.length === 0 && (
+        <div className="rounded-card bg-card shadow-card">
           <EmptyState
             title="Belum ada paket soal"
             description="Buat paket sendiri atau ambil paket yang dibagikan Solutest."
             icon="solar:box-linear"
             action={
-              <div className="flex gap-2">
+              <div className="flex flex-wrap justify-center gap-2">
                 <Button variant="outline" onClick={() => setCatalogOpen(true)}>
                   Ambil dari Solutest
                 </Button>
@@ -127,29 +140,42 @@ export function PaketListContainer() {
               </div>
             }
           />
-        )}
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {query.data?.data.map((p) => (
+        </div>
+      )}
+
+      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+        {query.data?.data.map((p) => {
+          const tone = subjectTone(p.subject_id ?? p.id);
+          return (
             <article
               key={p.id}
-              className="lift relative flex flex-col rounded-xl p-5 ring-1 ring-border"
+              style={toneStyle(tone)}
+              className="lift group/paket relative flex flex-col overflow-hidden rounded-card bg-card shadow-card has-[a:focus-visible]:ring-4 has-[a:focus-visible]:ring-primary/30"
             >
-              <div className="flex items-start justify-between gap-2">
-                <span className="grid size-11 place-items-center rounded-xl bg-primary/10 text-primary">
-                  <Iconify icon="solar:box-linear" size={22} />
-                </span>
+              <div className="deco-rings flex items-start justify-between gap-2 bg-[color-mix(in_srgb,var(--tone)_10%,var(--card))] px-5 pt-5 pb-4">
+                <div className="flex min-w-0 items-center gap-3">
+                  <ToneIcon icon={subjectIcon(p.subject_name)} tone={tone} solid />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold text-(--tone-ink)">
+                      {p.subject_name ?? 'Mapel belum diatur'}
+                    </p>
+                    <p className="text-xs text-foreground/60">
+                      {p.class_name ? `Kelas ${p.class_name}` : 'Kelas belum diatur'}
+                    </p>
+                  </div>
+                </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="ghost"
                       size="icon-sm"
                       aria-label={`Aksi paket ${p.title}`}
-                      className="relative z-10"
+                      className="relative z-10 bg-card/80 hover:bg-card"
                     >
                       <Iconify icon="solar:menu-dots-bold" size={18} />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
+                  <DropdownMenuContent align="end" className="w-52">
                     <DropdownMenuItem onSelect={() => setForm({ open: true, initial: p })}>
                       <Iconify icon="solar:pen-linear" size={16} />
                       Ubah info paket
@@ -178,45 +204,74 @@ export function PaketListContainer() {
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
-              <Link
-                href={paths.paketDetail(p.id)}
-                className="mt-4 after:absolute after:inset-0 after:content-['']"
-              >
-                <h3 className="line-clamp-2 font-semibold">{p.title}</h3>
-              </Link>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {[p.subject_name, p.class_name && `Kelas ${p.class_name}`]
-                  .filter(Boolean)
-                  .join(' · ') || 'Kelas & mapel belum diatur'}
-              </p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <StatusPill tone="primary" icon="solar:hashtag-linear">
-                  {p.code}
-                </StatusPill>
-                <StatusPill>{p.question_count} soal</StatusPill>
-                {p.source === 'SOLUTEST' && (
-                  <StatusPill tone="secondary" icon="solar:import-linear">
-                    Solutest
-                  </StatusPill>
-                )}
-                {p.schedule_count > 0 && (
-                  <StatusPill tone="success" icon="solar:calendar-mark-linear">
-                    Dipakai {p.schedule_count} jadwal
-                  </StatusPill>
-                )}
+
+              <div className="flex flex-1 flex-col px-5 pt-4 pb-5">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 font-mono text-xs leading-none font-bold text-foreground/75">
+                    <Iconify icon="solar:hashtag-linear" size={12} />
+                    {p.code}
+                  </span>
+                  {p.source === 'SOLUTEST' && (
+                    <StatusPill tone="secondary" icon="solar:import-linear">
+                      Solutest
+                    </StatusPill>
+                  )}
+                  {p.question_count === 0 && (
+                    <StatusPill tone="warning" icon="solar:danger-circle-linear">
+                      Belum ada soal
+                    </StatusPill>
+                  )}
+                </div>
+                <Link
+                  href={paths.paketDetail(p.id)}
+                  className="mt-3 rounded-sm after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
+                >
+                  <h3 className="line-clamp-2 text-[1.05rem] leading-snug font-bold transition-colors group-hover/paket:text-primary">
+                    {p.title}
+                  </h3>
+                </Link>
+
+                <dl className="mt-4 grid grid-cols-3 divide-x divide-border rounded-xl bg-muted/70 py-2.5 text-center">
+                  {[
+                    { label: 'Soal', value: p.question_count, icon: 'solar:document-text-linear' },
+                    { label: 'Menit', value: p.time, icon: 'solar:clock-circle-linear' },
+                    {
+                      label: 'Jadwal',
+                      value: p.schedule_count,
+                      icon: 'solar:calendar-mark-linear',
+                    },
+                  ].map((m) => (
+                    <div key={m.label} className="px-2">
+                      <dt className="flex items-center justify-center gap-1 text-[0.7rem] font-semibold text-muted-foreground">
+                        <Iconify icon={m.icon} size={13} />
+                        {m.label}
+                      </dt>
+                      <dd className="mt-0.5 text-base font-bold tabular-nums">{m.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+
+                <p className="mt-auto flex items-center gap-1.5 pt-4 text-xs text-muted-foreground">
+                  <Iconify icon="solar:refresh-circle-linear" size={14} />
+                  Diperbarui {formatShortDate(p.updatedAt)}
+                  {p.schedule_count > 0 && (
+                    <span className="ml-auto inline-flex items-center gap-1 font-semibold text-success">
+                      <span className="size-1.5 rounded-full bg-success" />
+                      Terpakai
+                    </span>
+                  )}
+                </p>
               </div>
-              <p className="mt-auto pt-4 text-xs text-muted-foreground">
-                Diperbarui {formatShortDate(p.updatedAt)} · {p.time} menit
-              </p>
             </article>
-          ))}
+          );
+        })}
+      </div>
+
+      {query.data && query.data.pagination.total_items > 0 && (
+        <div className="mt-6 rounded-card bg-card shadow-card">
+          <TablePagination meta={query.data.pagination} onPageChange={(page) => setF({ page })} />
         </div>
-        <TablePagination
-          meta={query.data?.pagination}
-          onPageChange={(page) => setF({ page })}
-          className="px-0 pb-0"
-        />
-      </SectionCard>
+      )}
 
       <PackageFormDialog
         open={form.open}
