@@ -118,6 +118,7 @@ export function usePaketMutations() {
       },
       onError,
     }),
+    
     duplicatePackage: useMutation({
       mutationFn: (id: number) => paketService.duplicate(id),
       onSuccess: (pkg) => {
