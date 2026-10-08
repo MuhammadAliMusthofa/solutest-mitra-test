@@ -209,9 +209,12 @@ export function QuestionEditorContainer() {
           <SectionCard title="Pengaturan" className="xl:sticky xl:top-28">
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="q-competency">Kompetensi</Label>
+                <Label htmlFor="q-competency">
+                  Kompetensi <span className="font-normal text-muted-foreground">(opsional)</span>
+                </Label>
                 <SelectField
                   id="q-competency"
+                  allLabel="Tanpa kompetensi"
                   value={form.competencyId}
                   // ganti kompetensi → sub kompetensi lama tidak berlaku lagi
                   onChange={(competencyId) => update({ competencyId, subCompetencyId: '' })}
@@ -248,9 +251,13 @@ export function QuestionEditorContainer() {
                   ))}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="q-sub-competency">Sub kompetensi</Label>
+                <Label htmlFor="q-sub-competency">
+                  Sub kompetensi{' '}
+                  <span className="font-normal text-muted-foreground">(opsional)</span>
+                </Label>
                 <SelectField
                   id="q-sub-competency"
+                  allLabel="Tanpa sub kompetensi"
                   value={form.subCompetencyId}
                   onChange={(subCompetencyId) => update({ subCompetencyId })}
                   options={(master.subCompetencies.data ?? []).map((s) => ({

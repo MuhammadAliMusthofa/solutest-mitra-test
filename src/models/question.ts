@@ -102,8 +102,9 @@ export interface QuestionBody {
   description: string;
   text: string;
   text_image: string;
-  competency_id: number | null;
-  sub_competency_id: number | null;
+  /** dihilangkan dari body bila tidak diisi (backend menolak null/0) */
+  competency_id?: number;
+  sub_competency_id?: number;
   options: Omit<QuestionOption, 'id'>[];
   attachments: Attachment[];
 }

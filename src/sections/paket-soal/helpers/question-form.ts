@@ -95,7 +95,6 @@ export const questionToForm = (q: Question): QuestionForm => {
 /** Validasi per tipe; kembalikan pesan error pertama atau ''. */
 export const validateForm = (f: QuestionForm): string => {
   if (!fromHtml(f.questionText) && !f.image) return 'Teks soal atau gambar wajib diisi';
-  if (!f.competencyId || !f.subCompetencyId) return 'Pilih kompetensi dan sub kompetensi soal';
   if (f.useStimulus && !fromHtml(f.stimulus)) return 'Isi teks stimulus atau matikan stimulus';
   switch (f.type) {
     case 1:
@@ -150,8 +149,8 @@ export const formToBody = (f: QuestionForm): QuestionBody => {
     description: f.explanation,
     text: f.useStimulus ? f.stimulus : '',
     text_image: '',
-    competency_id: f.competencyId ? Number(f.competencyId) : null,
-    sub_competency_id: f.competencyId && f.subCompetencyId ? Number(f.subCompetencyId) : null,
+    ...(f.competencyId && { competency_id: Number(f.competencyId) }),
+    ...(f.competencyId && f.subCompetencyId && { sub_competency_id: Number(f.subCompetencyId) }),
     options,
     attachments: f.image ? [{ type: 'image', path: f.image }] : [],
   };

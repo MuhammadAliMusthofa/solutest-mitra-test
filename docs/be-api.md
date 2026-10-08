@@ -78,3 +78,49 @@ Base: `https://<api-mitra>/api/v1` · staging: `https://be-solutest-mitra-stagin
 - Hasil `GET /student/attempts/:id` → `{ attempt_id, schedule: { id, title, end_at }, package: { id, title }, started_at, submitted_at, is_auto_ended, is_processed, score, predicate, total_correct, review_available, questions }`. is_processed false → "Nilai sedang dihitung", polling 2–3 dtk (maks ±30 dtk). score null bila show_score false. Pembahasan setelah jadwal berakhir (review_available). Belum submit → 403.
 - Leaderboard `GET /student/schedules/:id/leaderboard?scope=all|school&limit=1-100` → `{ data: [{ rank, user_id, full_name, class_name, school: { id, name }, score, predicate, duration_seconds, is_me }], schedule: { id, title, status }, scope, total_participant, me }`. show_score false → 403.
 - Riwayat `GET /student/history` → data `[{ attempt_id, schedule: { id, title }, package: { id, title, subject_name }, started_at, submitted_at, is_auto_ended, is_processed, score, predicate }]` + `summary: { total_attempt, total_scored, average_score, average_predicate, highest_score }` + paging.
+
+## Format soal per tipe (hanya 4 tipe; lain → 400)
+| type_question_id | Nama | Input admin (options) | Siswa | answer |
+| 1 | PG | ≥2 opsi, tepat 1 is_true | radio | [idOpsi] |
+| 2 | PG Kompleks | ≥2 opsi, ≥1 is_true | checkbox | [id, id, …] |
+| 3 | Benar/Salah | tepat 2 opsi ("Benar","Salah"), tepat 1 is_true | dua tombol | [idOpsi] |
+| 9 | Benar/Salah Kompleks | per pernyataan: 1 teks pernyataan + ≥2 label, 1 label is_true | tabel pernyataan × label | [idLabel1, idLabel2, …] |
+- Body soal (POST /admin/packages/:id/questions, PUT /admin/questions/:id): `question_text`* (HTML), `type_question_id`* (1,2,3,9), `competency_id`*, `sub_competency_id`*, `options`* (2–100 item `{ option_text, is_true?, reason?, order?, file?, point? }`), `description` (pembahasan, tampil setelah jadwal berakhir), `level_question` (EASY|MEDIUM default|HARD), `text_content`, `text_image` (stimulus), `order`, `attachments` (URL dari /admin/uploads), `explain_attachments`.
+- Tipe 9: opsi dikelompokkan dengan `order` = nomor pernyataan; dalam kelompok, opsi PERTAMA = teks pernyataan (is_true false), sisanya label; tepat satu label is_true. Kirim berurutan pernyataan lalu labelnya.
+  Respons (admin, siswa, pembahasan) memuat `statements: [{ order, statement: { id, option_text, order, file }, answers: [{ id, option_text, order, file }] }]`; tipe lain `statements: null`. Siswa: satu baris per statement, radio per baris; jawaban = id label terpilih per baris (mis. [20, 24]); jangan kirim id statement.
+- Penilaian: PG/BS 100 jika tepat kunci; PG Kompleks (benar − salah) ÷ jumlah kunci × 100, min 0; BS Kompleks pernyataan benar ÷ jumlah pernyataan × 100. Nilai akhir = rata-rata semua soal (kosong 0). total_correct = jumlah soal bernilai 100.
+
+## Monitoring (admin `/admin/monitoring`, guru `/teacher/monitoring`, guru otomatis dibatasi sekolahnya; school_id dari guru diabaikan)
+- `GET …/schedules?status=&search=&school_id=(admin)&page=&size=` → objek jadwal + `total_submitted`, `average_score` (null bila belum ada nilai)
+- `GET …/schedules/:id/summary?school_id=` → `{ schedule, schools: [{ school_id, school_name, total_participant, total_submitted, average_score, average_predicate, highest_score, lowest_score }] … }`
+- `GET …/schedules/:id/results?school_id=&search=&class_name=&page=&size=` → hasil per siswa, nilai tertinggi di atas
+- `GET …/attempts/:id` → detail pengerjaan + pembahasan
+- `GET …/students/:id/history?page=&size=` → riwayat akumulasi siswa
+- Guru: jadwal sekolah lain / siswa lain → 404.
+- Hasil per siswa item: `{ attempt_id, student: { id, full_name, email, nisn, class_name }, school: { id, name }, started_at, submitted_at, status: in_progress|scoring|scored, is_auto_ended, total_violation, score, predicate, total_correct }` (badge Mengerjakan / Menilai / nilai; tandai auto_ended & pelanggaran; monitoring selalu tampil nilai walau show_score false; bisa beberapa baris bila max_attempts > 1).
+- Detail `…/attempts/:id`: `student, school, schedule, package, started_at, deadline_at, submitted_at, score, total_correct, violations: [{ id, violation_type, note, createdAt }], questions[]` (kosong sampai dinilai). Item soal pembahasan: `{ id, question_text, description, type_question_id, type_question_name, text_content, text_image, attachments, explain_attachments, options: [{ id, option_text, order, file, is_true, reason, selected }], statements, score, is_correct, duration_seconds }`.
+- Riwayat siswa `…/students/:id/history`: data `[{ attempt_id, schedule, package, submitted_at, is_auto_ended, is_processed, score, predicate }]` + `student` + `summary: { total_attempt, average_score, highest_score }`.
+
+## Guru (prefix /teacher, role GURU) — TIDAK punya akses paket soal, jadwal, maupun sekolah lain
+- `GET /teacher/summary` → `{ school: { id, name }, total_student, schedules: { total, upcoming, active, ended } }`
+- `GET /teacher/students?search=&class_name=&is_active=&page=&size=` · `POST /teacher/students` `{ email, full_name, password?, phone?, nisn?, class_name? }` · `GET /teacher/students/:id` · `PUT /teacher/students/:id` `{ nisn?, class_name? }` · `PATCH /teacher/students/:id/status` `{ is_active }` · `POST /teacher/students/import` `{ students }`
+- nisn ≤ 20, class_name ≤ 100. Kuota siswa per mitra: penuh → 400 "Kuota siswa sudah penuh (2000/2000).". Siswa sekolah lain → 403; bukan siswa → 404. Guru tanpa sekolah → 400 "Akun guru belum terhubung ke sekolah…".
+- Monitoring di `/teacher/monitoring/*` (lihat Monitoring).
+
+## Error umum lain
+- 403 "Mitra tidak aktif" (mitra dinonaktifkan di CMS) → halaman "Layanan mitra sedang tidak aktif, hubungi Solutest".
+- 403 role tidak berhak "Anda tidak memiliki akses…"; 502 API key mitra salah.
+- 400 draft/submit lewat waktu+toleransi "Waktu pengerjaan sudah habis… otomatis dikumpulkan"; 403 buka hasil sebelum submit.
+
+## Edge case
+- Dua tab/perangkat: Mulai di perangkat lain → attempt sama dilanjutkan; ambil ulang sesi saat tab aktif lagi.
+- Offline: timer jalan; simpan di localStorage, kirim ulang draft saat online.
+- Nilai > 30 dtk belum diproses → "Nilai sedang diproses, cek riwayat nanti".
+- Jadwal diperpanjang: deadline_at siswa yang sudah mulai tidak berubah.
+
+## Halaman FE mitra (19)
+- Umum: login bermerek; layout per role.
+- Admin: dashboard (kuota, summary, jadwal aktif); pengaturan mitra (nama, nama singkat, tagline, kontak, warna utama/sekunder/aksen, logo); sekolah (cari circl, tambah, daftar, hapus); guru; siswa (+import); semua user; paket (daftar filter sumber, buat mentah, ubah, hapus, duplikat); soal (4 tipe, competency); katalog Solutest + import; jadwal; monitoring (daftar, ringkasan per sekolah, hasil per siswa, detail pengerjaan, riwayat siswa).
+- Guru: siswa (daftar, tambah, ubah NISN/kelas, aktif/nonaktif, import); monitoring (tanpa filter sekolah).
+- Siswa: daftar tryout + status tombol; halaman ujian (4 tipe, timer server, draft otomatis, submit, deteksi kecurangan); hasil (nilai, status penilaian, pembahasan setelah jadwal berakhir); riwayat + ringkasan.
+- Akun uji sandbox ada di backend `.test-accounts.env` (tidak di dokumen).
