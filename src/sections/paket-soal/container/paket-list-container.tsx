@@ -54,6 +54,7 @@ export function PaketListContainer() {
     initial: null,
   });
   const [toDelete, setToDelete] = useState<Package | null>(null);
+  const [toCopy, setToCopy] = useState<Package | null>(null);
   const [catalogOpen, setCatalogOpen] = useState(false);
 
   return (
@@ -152,7 +153,7 @@ export function PaketListContainer() {
               style={toneStyle(tone)}
               className="lift group/paket relative flex flex-col overflow-hidden rounded-card bg-card shadow-card has-[a:focus-visible]:ring-4 has-[a:focus-visible]:ring-primary/30"
             >
-              <div className="deco-rings flex items-start justify-between gap-2 bg-[color-mix(in_srgb,var(--tone)_10%,var(--card))] px-5 pt-5 pb-4">
+              <div className="deco-rings relative z-10 flex items-start justify-between gap-2 bg-[color-mix(in_srgb,var(--tone)_10%,var(--card))] px-5 pt-5 pb-4">
                 <div className="flex min-w-0 items-center gap-3">
                   <ToneIcon icon={subjectIcon(p.subject_name)} tone={tone} solid />
                   <div className="min-w-0">
@@ -178,12 +179,9 @@ export function PaketListContainer() {
                   <DropdownMenuContent align="end" className="w-52">
                     <DropdownMenuItem onSelect={() => setForm({ open: true, initial: p })}>
                       <Iconify icon="solar:pen-linear" size={16} />
-                      Ubah info paket
+                      Edit paket
                     </DropdownMenuItem>
-                    <DropdownMenuItem
-                      disabled={duplicatePackage.isPending}
-                      onSelect={() => duplicatePackage.mutate(p.id)}
-                    >
+                    <DropdownMenuItem onSelect={() => setToCopy(p)}>
                       <Iconify icon="solar:copy-linear" size={16} />
                       Salin paket
                     </DropdownMenuItem>
@@ -199,7 +197,7 @@ export function PaketListContainer() {
                       disabled={p.schedule_count > 0}
                     >
                       <Iconify icon="solar:trash-bin-trash-linear" size={16} />
-                      Hapus
+                      Hapus paket
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -291,6 +289,18 @@ export function PaketListContainer() {
         loading={removePackage.isPending}
         onConfirm={() =>
           toDelete && removePackage.mutate(toDelete.id, { onSuccess: () => setToDelete(null) })
+        }
+      />
+      <ConfirmDialog
+        open={Boolean(toCopy)}
+        onOpenChange={(open) => !open && setToCopy(null)}
+        icon="solar:copy-linear"
+        title="Salin paket soal?"
+        description={`Paket "${toCopy?.title}" beserta seluruh soalnya akan disalin menjadi paket baru dengan kode baru.`}
+        confirmLabel="Ya, salin"
+        loading={duplicatePackage.isPending}
+        onConfirm={() =>
+          toCopy && duplicatePackage.mutate(toCopy.id, { onSuccess: () => setToCopy(null) })
         }
       />
       <CatalogDialog

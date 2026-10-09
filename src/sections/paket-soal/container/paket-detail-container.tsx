@@ -36,6 +36,7 @@ export function PaketDetailContainer() {
   const [toDelete, setToDelete] = useState<{ q: Question; no: number } | null>(null);
   const [picked, setPicked] = useState<Set<number>>(() => new Set());
   const [confirmBulk, setConfirmBulk] = useState(false);
+  const [confirmCopy, setConfirmCopy] = useState(false);
   const p = query.data;
   const locked = p ? !p.is_editable : false;
 
@@ -73,7 +74,7 @@ export function PaketDetailContainer() {
                 <Iconify icon="solar:pen-linear" size={18} />
                 Ubah info
               </Button>
-              <Button variant="outline" onClick={duplicate} disabled={duplicatePackage.isPending}>
+              <Button variant="outline" onClick={() => setConfirmCopy(true)}>
                 <Iconify
                   icon={duplicatePackage.isPending ? 'svg-spinners:180-ring' : 'solar:copy-linear'}
                   size={18}
@@ -182,6 +183,16 @@ export function PaketDetailContainer() {
       )}
 
       {p && <PackageFormDialog open={editOpen} onOpenChange={setEditOpen} initial={p} />}
+      <ConfirmDialog
+        open={confirmCopy}
+        onOpenChange={setConfirmCopy}
+        icon="solar:copy-linear"
+        title="Salin paket soal?"
+        description={`Paket "${p?.title}" beserta seluruh soalnya akan disalin menjadi paket baru dengan kode baru.`}
+        confirmLabel="Ya, salin"
+        loading={duplicatePackage.isPending}
+        onConfirm={duplicate}
+      />
       <ConfirmDialog
         open={Boolean(toDelete)}
         onOpenChange={(open) => !open && setToDelete(null)}
